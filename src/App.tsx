@@ -8,6 +8,9 @@ import { Dashboard } from './pages/Dashboard';
 import NotFound from './pages/NotFound';
 import { PrivateRoute } from './components/PrivateRoute';
 import Home from './pages/Home';
+import { AdminEscritorios } from './pages/admin/AdminEscritorios';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminPlanos } from './pages/admin/AdminPlanos';
 
 const App: React.FC = () => {
   return (
@@ -26,6 +29,11 @@ const App: React.FC = () => {
           {/* Rotas protegidas - apenas usuários autenticados */}
           <Route element={<PrivateRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
+          </Route>
+
+          <Route element={<ProtectedRoute requiredRole="ROLE_SUPER_ADMIN" />}>
+            <Route path="/admin/escritorios" element={<AdminEscritorios />} />
+            <Route path="/admin/planos" element={<AdminPlanos />} />
           </Route>
           
           {/* Rota Fallback */}

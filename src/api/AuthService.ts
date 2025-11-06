@@ -3,7 +3,8 @@
 import axios from 'axios';
 import { type AuthTokens, type LoginParams, type CadastroParams } from '../types/auth';
 
-const API_URL = 'https://api.dashboard.rfrn.adv.br'
+//const API_URL = 'https://api.dashboard.rfrn.adv.br'
+const API_URL = 'http://localhost:8080'
 
 /**
  * Instância Axios para requisições autenticadas

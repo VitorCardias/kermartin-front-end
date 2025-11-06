@@ -10,7 +10,7 @@ interface AuthContextType {
   carregando: boolean;
   error: string | null;
   estaAutenticado: boolean;
-  login: (username: string, senha: string) => Promise<void>;
+  login: (username: string, senha: string) => Promise<Usuario | null>;
   cadastro: (formData: any) => Promise<void>;
   logout: () => void;
 }
@@ -23,7 +23,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [carregando, setCarregando] = useState(false);
+  const [carregando, setCarregando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [estaAutenticado, setEstaAutenticado] = useState(false);
 
@@ -34,10 +34,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const decoded: any = jwtDecode(token);
       return {
         username: decoded.sub,
+        roles: decoded.roles
       };
     } catch (error) {
       console.error('Erro ao decodificar token:', error);
-      return { username: '' };
+      return { 
+        username: '',
+        roles: [] 
+      };
     }
   };
   
@@ -108,9 +112,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const user = getUsuarioFromToken(tokens.token);
       setUsuario(user);
       setEstaAutenticado(true);
+
+      // Retornar o usuario
+      return user;
+
     } catch (error: any) {
       setError(error.response?.data?.message || 'Erro ao fazer login');
       setEstaAutenticado(false);
+
+      return null;
+
     } finally {
       setCarregando(false);
     }

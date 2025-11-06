@@ -10,11 +10,22 @@ export const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(username, senha);
+    
+    // 1. A função 'login' agora retorna o usuário, então o guardamos em uma variável.
+    const usuarioLogado = await login(username, senha);
 
-    if (!error) {
-      navigate("/dashboard");
+    // 2. Verificamos se o login foi bem-sucedido (se o usuário não é nulo)
+    if (usuarioLogado) {
+      // 3. Verificamos se a lista de roles do usuário inclui 'ROLE_SUPER_ADMIN'
+      if (usuarioLogado.roles.includes('ROLE_SUPER_ADMIN')) {
+        // Se for admin, vai para o painel de admin
+        navigate("/admin/escritorios");
+      } else {
+        // Senão, vai para o dashboard normal
+        navigate("/dashboard");
+      }
     }
+
   };
 
   return (

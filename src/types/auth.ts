@@ -24,7 +24,14 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
+/*
+type Roles = {
+  name: string;
+}
+*/
+
 export interface Usuario {
   username: string;
   tipoUsuario?: string;
+  roles: string[];
 }
