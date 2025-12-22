@@ -30,7 +30,7 @@ const DemandaModal: React.FC<DemandaModalProps> = ({ demanda, onClose, onEquipeA
           
           {/* Navegador de Abas lateral */}
           <div className="w-56 flex flex-col space-y-3 border-r border-gray-300 pr-6">
-            {["detalhes", "equipe", "etapas", "relatorio"].map((aba) => (
+            {["detalhes", "equipe", "etapas", "relatório"].map((aba) => (
               <button
                 key={aba}
                 onClick={() => setAbaAtiva(aba)}
@@ -104,7 +104,7 @@ const DemandaModal: React.FC<DemandaModalProps> = ({ demanda, onClose, onEquipeA
             
             {abaAtiva === "etapas" && <EtapasDemanda idDemanda={demanda.id} />}
 
-            {abaAtiva === "relatorio" && (
+            {abaAtiva === "relatório" && (
               <RelatoriosDemanda demanda={demanda} />
             )}
           </div>

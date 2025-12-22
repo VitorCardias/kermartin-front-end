@@ -84,6 +84,7 @@ export const AdminPlanos: React.FC = () => {
   }
 
   return (
+
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Painel do Administrador - Planos</h1>
@@ -142,6 +143,7 @@ export const AdminPlanos: React.FC = () => {
       )}
 
     </div>
+    
   );
   
 };

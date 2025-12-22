@@ -2,13 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { authApi } from '../../api/AuthService'; // Ajuste o caminho se necessário
 import { EditEscritorioModal } from '../../components/modals/EditEscritorioModal';
 import { CreateEscritorioModal } from '../../components/modals/CreateEscritorioModal';
+import type { StatusConta } from '../../types/StatusConta';
+import { ChangePasswordModal } from '../../components/modals/ChangeEscritorioPasswordModal';
 
 // Interface para os dados do escritório
 interface EscritorioAdmin {
   id: string;
+  nomeUsuario: string;
   razaoSocial: string;
   cnpj: string;
   emailCadastro: string;
+  statusConta: StatusConta;
+
   // Adicione outros campos que a API retorna e que você queira usar
 }
 
@@ -22,6 +27,7 @@ export const AdminEscritorios: React.FC = () => {
   const [isEditModalAberto, setIsEditModalAberto] = useState(false);
   const [isCreateModalAberto, setIsCreateModalAberto] = useState(false);
   const [escritorioSelecionado, setEscritorioSelecionado] = useState<EscritorioAdmin | null>(null);
+  const [isPasswordModalAberto, setIsPasswordModalAberto] = useState(false);
 
   // --- Funções para o Modal de Edição ---
   const handleEditClick = (escritorio: EscritorioAdmin) => {
@@ -36,11 +42,13 @@ export const AdminEscritorios: React.FC = () => {
 
   const handleSaveEdit = async (data: EscritorioAdmin) => {
     try {
-      await authApi.put('/escritorio', data);
+      await authApi.put(`/escritorio/${data.id}`, data);
       setEscritorios(escritorios.map(e => (e.id === data.id ? data : e)));
       console.log('Escritório atualizado com sucesso!');
+      handleCloseEditModal();
     } catch (error) {
       console.error('Erro ao atualizar o escritório:', error);
+      // TODO: implementar um setErro ou um toast aqui para o usuário ver que falhou
     }
   };
 
@@ -54,6 +62,29 @@ export const AdminEscritorios: React.FC = () => {
       console.log('Escritório criado com sucesso!');
     } catch (error) {
       console.error('Erro ao criar o escritório:', error);
+    }
+  };
+
+  // --- Funções para segurança ---
+  // NOVO: Funções para o Modal de Senha
+  const handlePasswordClick = (escritorio: EscritorioAdmin) => {
+    setEscritorioSelecionado(escritorio);
+    setIsPasswordModalAberto(true);
+  };
+
+  const handleSavePassword = async (novaSenha: string) => {
+    if (!escritorioSelecionado) return;
+    
+    try {
+
+      await authApi.patch(`/escritorio/${escritorioSelecionado.id}/alterar-senha`, {
+        novaSenha: novaSenha
+      });
+      console.log("Senha alterada com sucesso!");
+
+    } catch (error) {
+      console.error("Erro ao alterar senha:", error);
+      alert("Erro ao alterar a senha."); // Um feedback simples
     }
   };
 
@@ -111,12 +142,24 @@ export const AdminEscritorios: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{escritorio.cnpj}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{escritorio.emailCadastro}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  
+                  {/* Botão Editar existente */}
                   <button 
                     onClick={() => handleEditClick(escritorio)}
                     className="text-indigo-600 hover:text-indigo-900"
                   >
                     Editar
                   </button>
+
+                  {/* NOVO: Botão Senha */}
+                  <button 
+                    onClick={() => handlePasswordClick(escritorio)}
+                    className="text-red-600 hover:text-red-900 ml-4" // ml-4 dá o espaço entre os botões
+                    title="Alterar Senha Administrativa"
+                  >
+                    Senha
+                  </button>
+
                 </td>
               </tr>
             ))}
@@ -132,6 +175,17 @@ export const AdminEscritorios: React.FC = () => {
         onSave={handleSaveEdit}
       />
 
+      {/* Modal de Alteração de Senha */}
+      <ChangePasswordModal
+        isOpen={isPasswordModalAberto}
+        onClose={() => {
+          setIsPasswordModalAberto(false);
+          setEscritorioSelecionado(null);
+        }}
+        onSave={handleSavePassword}
+        nomeUsuario={escritorioSelecionado?.razaoSocial || 'Usuário'}
+      />
+
       {/* Modal de Criação */}
       <CreateEscritorioModal
         isOpen={isCreateModalAberto}
@@ -140,4 +194,5 @@ export const AdminEscritorios: React.FC = () => {
       />
     </div>
   );
+  
 };
