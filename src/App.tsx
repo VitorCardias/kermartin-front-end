@@ -11,6 +11,7 @@ import Home from './pages/Home';
 import { AdminEscritorios } from './pages/admin/AdminEscritorios';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminPlanos } from './pages/admin/AdminPlanos';
+import { AdminAssinaturas } from './pages/admin/AdminAssinaturas';
 
 const App: React.FC = () => {
   return (
@@ -34,6 +35,7 @@ const App: React.FC = () => {
           <Route element={<ProtectedRoute requiredRole="ROLE_SUPER_ADMIN" />}>
             <Route path="/admin/escritorios" element={<AdminEscritorios />} />
             <Route path="/admin/planos" element={<AdminPlanos />} />
+            <Route path="/admin/assinaturas" element={<AdminAssinaturas />} />
           </Route>
           
           {/* Rota Fallback */}

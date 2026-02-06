@@ -14,7 +14,6 @@ interface EscritorioAdmin {
   emailCadastro: string;
   statusConta: StatusConta;
 
-  // Adicione outros campos que a API retorna e que você queira usar
 }
 
 export const AdminEscritorios: React.FC = () => {
@@ -56,7 +55,6 @@ export const AdminEscritorios: React.FC = () => {
   const handleSaveCreate = async (data: any) => {
     try {
       await authApi.post('/auth/escritorio/register', data);
-      // Após o sucesso, recarregamos a lista para incluir o novo item
       const updatedResponse = await authApi.get('/escritorio');
       setEscritorios(updatedResponse.data);
       console.log('Escritório criado com sucesso!');
@@ -66,7 +64,6 @@ export const AdminEscritorios: React.FC = () => {
   };
 
   // --- Funções para segurança ---
-  // NOVO: Funções para o Modal de Senha
   const handlePasswordClick = (escritorio: EscritorioAdmin) => {
     setEscritorioSelecionado(escritorio);
     setIsPasswordModalAberto(true);
@@ -143,7 +140,7 @@ export const AdminEscritorios: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{escritorio.emailCadastro}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   
-                  {/* Botão Editar existente */}
+                  {/* Botão Editar */}
                   <button 
                     onClick={() => handleEditClick(escritorio)}
                     className="text-indigo-600 hover:text-indigo-900"
@@ -151,10 +148,10 @@ export const AdminEscritorios: React.FC = () => {
                     Editar
                   </button>
 
-                  {/* NOVO: Botão Senha */}
+                  {/* Botão Senha */}
                   <button 
                     onClick={() => handlePasswordClick(escritorio)}
-                    className="text-red-600 hover:text-red-900 ml-4" // ml-4 dá o espaço entre os botões
+                    className="text-red-600 hover:text-red-900 ml-4"
                     title="Alterar Senha Administrativa"
                   >
                     Senha

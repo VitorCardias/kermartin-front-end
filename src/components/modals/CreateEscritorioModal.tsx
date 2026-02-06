@@ -1,11 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { authApi } from '../../api/AuthService';
-
-// Interfaces para os tipos de dados
-interface IPlano {
-  id: string;
-  nome: string;
-}
 
 interface CreateEscritorioData {
   nomeUsuario: string;
@@ -39,35 +32,17 @@ const ESTADO_INICIAL_VAZIO: CreateEscritorioData = {
 
 export const CreateEscritorioModal: React.FC<CreateEscritorioModalProps> = ({ isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState<CreateEscritorioData>(ESTADO_INICIAL_VAZIO);
-  const [planos, setPlanos] = useState<IPlano[]>([]);
   const [carregando, setCarregando] = useState(false);
-
-  // Busca a lista de planos disponíveis quando o modal abre
+  
   useEffect(() => {
     if (isOpen) {
-      const buscarPlanos = async () => {
-        try {
-          const response = await authApi.get('/plano');
-          setPlanos(response.data);
-        } catch (error) {
-          console.error("Erro ao buscar planos:", error);
-        }
-      };
-      buscarPlanos();
       setFormData(ESTADO_INICIAL_VAZIO);
     }
   }, [isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    if (name === 'planoId') {
-      setFormData(prev => ({
-        ...prev,
-        planoDTO: { id: value }
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,23 +88,6 @@ export const CreateEscritorioModal: React.FC<CreateEscritorioModalProps> = ({ is
             <div>
               <label htmlFor="cnpj" className="block text-sm font-medium text-gray-700">CNPJ</label>
               <input type="text" id="cnpj" name="cnpj" value={formData.cnpj} onChange={handleChange} required className="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
-            </div>
-            
-            <div>
-              <label htmlFor="plano" className="block text-sm font-medium text-gray-700">Plano</label>
-              <select
-                id="plano"
-                name="planoId"
-                value={formData.planoDTO.id}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="" disabled>Selecione um plano</option>
-                {planos.map(plano => (
-                  <option key={plano.id} value={plano.id}>{plano.nome}</option>
-                ))}
-              </select>
             </div>
 
           </div>
