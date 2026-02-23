@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { useTarefas } from "../../hooks/useTarefas";
 import { formatarDisplayPrioridade, formatarDisplayStatusDemanda, PrioridadeDemanda, StatusDemanda } from "../../types/TiposDemandas";
+import { useTarefasEtapas } from "../../hooks/useTarefasEtapas";
 
 type AdicionarTarefaModalProps = {
   idEtapa: string;
@@ -9,7 +9,7 @@ type AdicionarTarefaModalProps = {
 };
 
 const AdicionarTarefaModal: React.FC<AdicionarTarefaModalProps> = ({ idEtapa, onClose, onTarefaAdicionada }) => {
-  const { cadastrarTarefa } = useTarefas(idEtapa);
+  const { cadastrarTarefa } = useTarefasEtapas(idEtapa);
   const [formData, setFormData] = useState({
     titulo: "",
     descricao: "",

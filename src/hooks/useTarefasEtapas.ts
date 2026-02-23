@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { authApi } from "../api/AuthService";
 import { usePerfil } from "./usePerfil"; // Importe o hook usePerfil
 
-type TarefaAPI = {
+export type TarefaAPI = {
   id: string;
   titulo: string;
   descricao: string | null;
@@ -27,7 +27,7 @@ type NovaTarefaPayload = Omit<TarefaAPI, "id" | "criador" | "porcentagemConclusa
 
 export type TarefaEtapaDemanda = TarefaAPI;
 
-export const useTarefas = (idEtapa: string) => {
+export const useTarefasEtapas = (idEtapa: string) => {
   const perfil = usePerfil(); // Utilize o hook usePerfil
   const [tarefas, setTarefas] = useState<TarefaAPI[]>([]);
   const [loading, setLoading] = useState(false);

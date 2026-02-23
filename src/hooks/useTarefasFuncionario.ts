@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { authApi } from "../api/AuthService";
 
-
 type TarefaAPI = {
   id: string;
   titulo: string;
@@ -11,21 +10,24 @@ type TarefaAPI = {
   porcentagemConclusao: number;
   inicioPrazo: string | null;
   conclusaoPrazo: string | null;
-  etapaDemandaDTO: { 
-    id: string,
-    titulo: string,
-    demanda: {
-      titulo: string
-    }
-  };
+  
+  etapaDemandaDTO?: { 
+    id: string;
+    titulo: string;
+  } | null;
+  
+  demandaDTO?: {
+    id: string;
+    titulo: string;
+  } | null;
+  
   criador: { id: string };
 };
 
 export type TarefaComAtribuicao = {
-  tarefaEtapaDTO: TarefaAPI;
+  tarefaEtapaDTO: TarefaAPI; // Mantendo o nome da sua prop, mesmo que agora seja só 'tarefa'
   idAtribuicaoFuncionario: string;
 };
-
 
 type PaginacaoResponse = {
   content: TarefaComAtribuicao[];
@@ -61,17 +63,16 @@ export const useTarefasFuncionario = (idFuncionario: string) => {
 
   const concluirTarefa = async (idAtribuicaoTarefa: string) => {
     if (!idFuncionario) {
-      return console.log("O idFuncionario não foi atribuido no hook de useTarefasFuncionario ao tentar concluir a tarefa.")
+      return console.log("O idFuncionario não foi atribuido no hook ao tentar concluir a tarefa.")
     }
 
     try {
-      const respose = await authApi.patch(
+      const response = await authApi.patch(
         `/membro-equipe-tarefa/concluir-tarefa?idAtribuicao=${idAtribuicaoTarefa}`
       );
       
       buscarTarefas();
-      return respose;
-
+      return response;
     } catch (error) {
       console.error("Erro ao tentar finalizar a tarefa: ", error)
     }

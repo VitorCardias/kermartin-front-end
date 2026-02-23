@@ -1,7 +1,8 @@
-import type { TarefaEtapaDemanda } from "../../hooks/useTarefas";
+import type { TarefaDemandaAPI } from "../../hooks/useTarefasDemandas";
+import type { TarefaAPI } from "../../hooks/useTarefasEtapas";
 
 type DeletarTarefaModalProps = {
-  tarefa: TarefaEtapaDemanda;
+  tarefa: TarefaAPI | TarefaDemandaAPI
   onClose: () => void;
   deletar: () => void;
 };
@@ -11,7 +12,7 @@ const DeletarTarefaModal: React.FC<DeletarTarefaModalProps> = ({ tarefa, onClose
   return (
     <div className="fixed inset-0 flex items-center justify-center p-6">
       <div className="w-full max-w-md sm:max-w-lg md:max-w-xl bg-white p-6 rounded-md border border-gray-300 shadow-2xl max-h-screen overflow-y-auto">
-        <div className="flex justify-between items-center mb-4"> {/* Adicionei flex, justify-between e items-center */}
+        <div className="flex justify-between items-center mb-4"> 
           <h3 className="text-2xl font-semibold">Excluir Tarefa</h3>
         </div>
 

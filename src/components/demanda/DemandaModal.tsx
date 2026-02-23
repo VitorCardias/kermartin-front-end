@@ -4,6 +4,7 @@ import { formatarDisplayPrioridade, formatarDisplayStatusDemanda } from "../../t
 import EquipeDemanda from "./EquipeDemanda";
 import EtapasDemanda from "../etapa-demanda/EtapasDemanda";
 import RelatoriosDemanda from "../relatorios/RelatoriosDemanda";
+import TarefasDemanda from "../tarefa-demanda/TarefasDemanda";
 
 type DemandaModalProps = {
   demanda: Demanda;
@@ -30,7 +31,7 @@ const DemandaModal: React.FC<DemandaModalProps> = ({ demanda, onClose, onEquipeA
           
           {/* Navegador de Abas lateral */}
           <div className="w-56 flex flex-col space-y-3 border-r border-gray-300 pr-6">
-            {["detalhes", "equipe", "etapas", "relatório"].map((aba) => (
+            {["detalhes", "equipe", "tarefas", "etapas", "relatório"].map((aba) => (
               <button
                 key={aba}
                 onClick={() => setAbaAtiva(aba)}
@@ -101,6 +102,8 @@ const DemandaModal: React.FC<DemandaModalProps> = ({ demanda, onClose, onEquipeA
                 onEquipeAlteradaNaListaPrincipal={onEquipeAlterada}
               />
             )}
+
+            {abaAtiva === "tarefas" && <TarefasDemanda idDemanda={demanda.id} />}
             
             {abaAtiva === "etapas" && <EtapasDemanda idDemanda={demanda.id} />}
 

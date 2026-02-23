@@ -21,7 +21,7 @@ const EquipeTarefa: React.FC<EquipeTarefaProps> = ({ idTarefa, idEtapa,  statusT
 
     try {
       await authApi.post("/membro-equipe-tarefa", {
-        tarefaEtapaDTO: { id: idTarefa },
+        tarefaDTO: { id: idTarefa },
         funcionarioDTO: { id: funcionarioId },
         status: statusTarefa
       });

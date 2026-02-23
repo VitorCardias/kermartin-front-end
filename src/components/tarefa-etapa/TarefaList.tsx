@@ -1,15 +1,15 @@
 import React, { useState } from "react";
-import { useTarefas } from "../../hooks/useTarefas";
 import EditarTarefaModal from "./EditarTarefaModal";
 import AdicionarTarefaModal from "./AdicionarTarefaModal"; // Importe o novo modal
 import { formatarDisplayPrioridade, formatarDisplayStatusDemanda } from "../../types/TiposDemandas";
+import { useTarefasEtapas } from "../../hooks/useTarefasEtapas";
 
 type TarefaListProps = {
   idEtapa: string;
 };
 
 const TarefaList: React.FC<TarefaListProps> = ({ idEtapa }) => {
-  const { tarefas, loading, paginaAtual, setPaginaAtual, totalPaginas, buscarTarefas, deletarTarefa} = useTarefas(idEtapa); // Agora com cadastrarTarefa
+  const { tarefas, loading, paginaAtual, setPaginaAtual, totalPaginas, buscarTarefas, deletarTarefa} = useTarefasEtapas(idEtapa); // Agora com cadastrarTarefa
   const [modalAberto, setModalAberto] = useState(false);
   const [tarefaSelecionada, setTarefaSelecionada] = useState<null | typeof tarefas[0]>(null);
   const [modalAdicionarTarefaAberto, setModalAdicionarTarefaAberto] = useState(false);

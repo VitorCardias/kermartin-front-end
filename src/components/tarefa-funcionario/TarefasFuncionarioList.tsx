@@ -86,11 +86,15 @@ const TarefasFuncionarioList: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Linha de contexto (sem alterações) */}
-                    <p className="text-sm text-gray-500 mt-2"> {/* Adicionado um pouco de margem superior */}
-                      <span className="font-medium text-gray-700">Demanda:</span> {tarefa.tarefaEtapaDTO.etapaDemandaDTO.demanda.titulo}
-                      {"  ›  "}
-                      <span className="font-medium text-gray-700">Etapa:</span> {tarefa.tarefaEtapaDTO.etapaDemandaDTO.titulo}
+                    <p className="text-sm text-gray-500 mt-2">
+                      <span className="font-medium text-gray-700">Demanda:</span> {tarefa.tarefaEtapaDTO.demandaDTO?.titulo || "Demanda Desconhecida"}
+                      
+                      {tarefa.tarefaEtapaDTO.etapaDemandaDTO && (
+                        <>
+                          {"  ›  "}
+                          <span className="font-medium text-gray-700">Etapa:</span> {tarefa.tarefaEtapaDTO.etapaDemandaDTO.titulo}
+                        </>
+                      )}
                     </p>
                     
                   </li>
