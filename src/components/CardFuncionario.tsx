@@ -15,7 +15,7 @@ const CardFuncionario: React.FC<CardFuncionarioProps> = ({
 }) => {
 
     return (
-        <div className="w-full max-w-full px-3 sm:px-4 md:px-6 md:w-4/5">
+        <div className="w-full max-w-full md:w-4/5">
             <div className="p-3 sm:p-5 md:p-6 flex flex-col sm:flex-row gap-4 sm:gap-6 justify-between items-start sm:items-center bg-white rounded-lg shadow-md border-2 border-default cursor-pointer transition-all duration-300 hover:shadow-lg">
                 {/* Seção de Informações */}
                 <div className='flex flex-col sm:flex-row gap-3 sm:gap-4 flex-1 w-full sm:w-auto'>

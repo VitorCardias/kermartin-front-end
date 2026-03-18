@@ -1,5 +1,11 @@
 import React, { useState } from "react";
 import type { Funcionario } from "../../../Hooks/useFuncionarios";
+import { 
+  formatarEmail, 
+  formatarTexto, 
+  removerFormatacao,
+  formatarCPFEnquantoDigita
+} from "../../../utils/formatters";
 import Titulo from "../../Titulo";
 import AlertModal from "../AlertModal";
 
@@ -32,7 +38,15 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    let novoValor = value;
+
+    // Aplicar formatação específica para cada campo
+    if (name === "cpf") {
+      novoValor = formatarCPFEnquantoDigita(value);
+    }
+
+    setFormData({ ...formData, [name]: novoValor });
   };
 
   const validateForm = (): string | null => {
@@ -78,6 +92,11 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
     try {
       const novoFuncionario = {
         ...formData,
+        nomeCompleto: formatarTexto(formData.nomeCompleto),
+        nomeUsuario: formData.nomeUsuario.trim(),
+        emailCadastro: formatarEmail(formData.emailCadastro),
+        cpf: removerFormatacao(formData.cpf),
+        qualificacaoFuncionario: formatarTexto(formData.qualificacaoFuncionario),
       };
 
       await onCadastro(novoFuncionario);
