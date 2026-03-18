@@ -1,4 +1,4 @@
-import type { ClientePessoaJuridica } from "../../../hooks/useClientes";
+import type { ClientePessoaJuridica } from "../../../Hooks/useClientes";
 import { formatarDisplayTipoCliente } from "../../../types/TiposClientes";
 
 type ClientePessoaJuridicaModalProps = {

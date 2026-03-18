@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Cliente, ClientePessoaJuridica } from "../../../hooks/useClientes";
+import type { Cliente, ClientePessoaJuridica } from "../../../Hooks/useClientes";
 
 type EditarClientePessoaJuridicaModalProps = {
   cliente: ClientePessoaJuridica;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useClientes, type Cliente } from "../../hooks/useClientes";
+import { useClientes, type Cliente } from "../../Hooks/useClientes";
 import ClientePessoaFisicaModal from "./modal-detalhes/ClientePessoaFisicaModal";
 import { TipoCliente } from "../../types/TiposClientes";
 import ClientePessoaJuridicaModal from "./modal-detalhes/ClientePessoaJuridicaModal";

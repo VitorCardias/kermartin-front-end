@@ -1,6 +1,6 @@
 // Página de Cadastro
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../Hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { type CadastroParams } from '../types/auth';
 import { authApi } from '../api/AuthService';
@@ -10,7 +10,7 @@ interface IPlano {
   nome: string
 }
 
-export const Cadastro: React.FC = () => {  
+export default function Cadastro() {
   const [formData, setFormData] = useState<CadastroParams>({
     nomeUsuario: '',
     emailCadastro: '',
@@ -83,74 +83,82 @@ export const Cadastro: React.FC = () => {
       navigate('/login');
     }
   };
-  
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8 space-y-6">
-        <h2 className="text-2xl font-semibold text-gray-900 text-center">Cadastro de Escritório</h2>
-        {error && (
-          <div className="bg-red-500/20 text-red-400 p-3 rounded-md border border-red-500/30">
-            {error}
-          </div>
-        )}
-        
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+        <h1 className="text-3xl font-bold text-center mb-2 text-gray-800">Kermartin</h1>
+        <p className="text-center text-gray-600 mb-6">Criar Nova Conta</p>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="nomeUsuario" className="block text-sm font-medium text-gray-700">Nome de Usuário:</label>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+          <div>
+            <label htmlFor="nomeUsuario" className="block text-sm font-medium text-gray-700 mb-1">
+              Nome de Usuário
+            </label>
             <input
-              type="text"
               id="nomeUsuario"
+              type="text"
               name="nomeUsuario"
               value={formData.nomeUsuario}
               onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Escolha um nome de usuário"
               required
-              placeholder="Digite seu nome de usuário"
-              className="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 text-gray-900 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             />
           </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="emailCadastro" className="block text-sm font-medium text-gray-700">Email:</label>
+          <div>
+            <label htmlFor="emailCadastro" className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
             <input
-              type="email"
               id="emailCadastro"
+              type="email"
               name="emailCadastro"
               value={formData.emailCadastro}
               onChange={handleChange}
-              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Digite seu email"
-              className="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 text-gray-900 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              required
             />
           </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="senha" className="block text-sm font-medium text-gray-700">Senha:</label>
+
+          <div>
+            <label htmlFor="senha" className="block text-sm font-medium text-gray-700 mb-1">
+              Senha
+            </label>
             <input
-              type="password"
               id="senha"
+              type="password"
               name="senha"
               value={formData.senha}
               onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Digite uma senha"
               required
-              placeholder="Digite sua senha"
-              className="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 text-gray-900 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             />
           </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="razaoSocial" className="block text-sm font-medium text-gray-700">Razão Social:</label>
+
+          <div>
+            <label htmlFor="RazaoSocial" className="block text-sm font-medium text-gray-700 mb-1">
+              Razão Social
+            </label>
             <input
+              id="RazaoSocial"
               type="text"
-              id="razaoSocial"
               name="razaoSocial"
               value={formData.razaoSocial}
               onChange={handleChange}
-              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Digite a razão social"
-              className="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 text-gray-900 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              required
             />
           </div>
-          
+
           <div className="space-y-2">
             <label htmlFor="cnpj" className="block text-sm font-medium text-gray-700">CNPJ:</label>
             <input
@@ -193,16 +201,23 @@ export const Cadastro: React.FC = () => {
               <p>Carregando planos...</p>
             </div>
           )}
-          
+
           <button
             type="submit"
             disabled={carregando}
-            className="w-full bg-gray-900 text-white py-3 rounded-md hover:bg-gray-800 transition-colors duration-200"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-2 rounded-lg transition"
           >
             {carregando ? 'Cadastrando...' : 'Cadastrar'}
           </button>
         </form>
+
+        <p className="text-center mt-6 text-gray-600">
+          Já tem uma conta?{' '}
+          <a href="/login" className="text-indigo-600 hover:text-indigo-700 font-semibold">
+            Entre aqui
+          </a>
+        </p>
       </div>
     </div>
   );
-};
+}

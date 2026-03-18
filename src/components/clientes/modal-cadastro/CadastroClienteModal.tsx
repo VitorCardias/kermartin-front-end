@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { NovoCliente } from "../../../hooks/useClientes";
+import type { NovoCliente } from "../../../Hooks/useClientes";
 import type { TipoCliente } from "../../../types/TiposClientes";
 import clsx from "clsx";
 import FormularioCadastroPessoaFisica from "./FormularioCadastroPessoaFisica";

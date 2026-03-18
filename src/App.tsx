@@ -1,50 +1,91 @@
-// Configuração de rotas da aplicação
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import { Login } from './pages/Login';
-import { Cadastro } from './pages/Cadastro';
-import { Dashboard } from './pages/Dashboard';
-import NotFound from './pages/NotFound';
-import { PrivateRoute } from './components/PrivateRoute';
-import Home from './pages/Home';
-import { AdminEscritorios } from './pages/admin/AdminEscritorios';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { AdminPlanos } from './pages/admin/AdminPlanos';
-import { AdminAssinaturas } from './pages/admin/AdminAssinaturas';
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import { useContext } from "react";
+import Tarefas from "./pages/Tarefas";
+import Demandas from "./pages/Demandas";
+import Clientes from "./pages/Clientes";
+import Funcionarios from "./pages/Funcionarios";
+import Agenda from "./pages/Agenda";
+import Login from "./pages/Login";
+import Cadastro from "./pages/Cadastro";
+import { AdminEscritorios } from "./pages/admin/AdminEscritorios";
+import { AdminPlanos } from "./pages/admin/AdminPlanos";
+import { AdminAssinaturas } from "./pages/admin/AdminAssinaturas";
+import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
+import ProtectedRouteByType from "./components/ProtectedRouteByType";
+import { PrivateRoute } from "./components/PrivateRoute";
+import { AuthProvider, AuthContext } from "./contexts/AuthContext";
 
-const App: React.FC = () => {
+function AppContent() {
+  const { estaAutenticado, carregando, usuario } = useContext(AuthContext);
+
+  // Carregamento entre as rotas
+  if (carregando) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  // Determinar rota padrão baseado no role
+  const defaultRoute = usuario?.roles?.includes("ROLE_SUPER_ADMIN") 
+    ? "/admin/escritorios" 
+    : "/";
+
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <>
+      {estaAutenticado && <Navbar />}
+      <main className={estaAutenticado ? "grow bg-light" : ""}>
         <Routes>
+          {/* Rotas públicas */}
+          <Route 
+            path="/login" 
+            element={estaAutenticado ? <Navigate to="/" replace /> : <Login />} 
+          />
+          <Route 
+            path="/cadastro" 
+            element={estaAutenticado ? <Navigate to="/" replace /> : <Cadastro />} 
+          />
 
-          <Route path="/" element={<Home />} />
-
-          {/* Rota pública para login */}
-          <Route path="/login" element={<Login />} />
-          
-          {/* Rota pública para cadastro */}
-          <Route path="/cadastro" element={<Cadastro />} />
-          
-          {/* Rotas protegidas - apenas usuários autenticados */}
+          {/* Rotas privadas (requer autenticação) */}
           <Route element={<PrivateRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/" element={<Tarefas />} />
+            <Route path="/demanda" element={<Demandas />} />
+            <Route path="/cliente" element={<Clientes />} />
+            <Route path="/agenda" element={<Agenda />} />
           </Route>
 
+          {/* Rota de Funcionários (apenas para Escritório) */}
+          <Route element={<ProtectedRouteByType allowedTypes={["Escritorio"]} />}>
+            <Route path="/funcionario" element={<Funcionarios />} />
+          </Route>
+
+          {/* Rotas de admin (requer role ROLE_SUPER_ADMIN) */}
           <Route element={<ProtectedRoute requiredRole="ROLE_SUPER_ADMIN" />}>
             <Route path="/admin/escritorios" element={<AdminEscritorios />} />
             <Route path="/admin/planos" element={<AdminPlanos />} />
             <Route path="/admin/assinaturas" element={<AdminAssinaturas />} />
           </Route>
-          
-          {/* Rota Fallback */}
-          <Route path="*" element={<NotFound />} />
-          
+
+          {/* Rota padrão */}
+          <Route path="*" element={<Navigate to={estaAutenticado ? defaultRoute : "/login"} replace />} />
         </Routes>
-      </BrowserRouter>
+      </main>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="flex flex-col min-h-screen">
+          <AppContent />
+        </div>
+      </Router>
     </AuthProvider>
   );
-};
+}
 
-export default App;
+export default App

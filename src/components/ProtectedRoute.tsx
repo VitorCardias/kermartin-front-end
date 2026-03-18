@@ -1,35 +1,24 @@
-import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { Navigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
+import { useAuth } from '../Hooks/useAuth';
 
 interface ProtectedRouteProps {
   requiredRole: string;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredRole }) => {
+export default function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {
   const { usuario, estaAutenticado, carregando } = useAuth();
 
-  // --- ADICIONE ESTE CONSOLE.LOG ---
-  /*
-  console.log('ProtectedRoute DEBUG:', {
-    carregando,
-    estaAutenticado,
-    requiredRole,
-    rolesDoUsuario: usuario?.roles
-  });
-  */
-  // ---------------------------------
-
-  // Se o contexto ainda está carregando a informação de autenticação, mostre uma mensagem.
   if (carregando) {
-    return <div>Carregando...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
   }
-
-  // Se o usuário não está autenticado OU se o array de roles do usuário não inclui a role necessária, redirecione para o login.
   if (!estaAutenticado || !usuario?.roles.includes(requiredRole)) {
     return <Navigate to="/login" replace />;
   }
 
-  // Se o usuário passou por todas as verificações, renderize a página que está sendo protegida.
   return <Outlet />;
-};
+}

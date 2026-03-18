@@ -3,7 +3,7 @@
 import axios from 'axios';
 import { type AuthTokens, type LoginParams, type CadastroParams } from '../types/auth';
 
-const API_URL = 'https://api.dashboard.rfrn.adv.br'
+const API_URL = 'https://kermartin-api.onrender.com'
 //const API_URL = 'http://localhost:8080'
 
 /**

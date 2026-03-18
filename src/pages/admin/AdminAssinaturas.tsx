@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { AssinaturaResponseDTO } from "../../types/AssinaturaTypes";
 import { AssinaturaService } from "../../service/AssinaturaService";
-import { CreateAssinaturaModal } from "../../components/admin-assinatura/CreateAssinaturaModal";
+import { CreateAssinaturaModal } from "../../components/modals/CreateAssinaturaModal";
 
 const formatDate = (dateStr: string) => {
     if(!dateStr) return '-';

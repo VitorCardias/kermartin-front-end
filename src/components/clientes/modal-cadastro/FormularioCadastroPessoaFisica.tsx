@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { NovoClientePessoaFisica } from "../../../hooks/useClientes";
+import type { NovoClientePessoaFisica } from "../../../Hooks/useClientes";
 
 type FormularioCadastroPessoaFisicaProps = {
   onClose: () => void;
