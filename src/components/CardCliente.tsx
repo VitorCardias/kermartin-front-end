@@ -18,7 +18,7 @@ const CardCliente: React.FC<CardClienteProps> = ({
     const tipoNormalizado = tipo?.toUpperCase() || "PF";
 
     return (
-        <div className="w-full sm:w-4/5">
+        <div className={`w-full sm:w-4/5 inset shadow-lg rounded-xl border-l-6 ${tipoNormalizado === "PF" ? "border-l-darkblue" : "border-l-lightblue"}`}>
             <div className="p-3 sm:p-5 md:p-6 flex flex-col sm:flex-row gap-4 sm:gap-6 justify-between items-start sm:items-center bg-white rounded-lg shadow-md border-2 border-default cursor-pointer transition-all duration-300 hover:shadow-lg">
                 {/* Seção de Informações */}
                 <div className='flex flex-col sm:flex-row gap-3 sm:gap-4 flex-1 w-full sm:w-auto'>

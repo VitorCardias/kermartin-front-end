@@ -30,6 +30,10 @@
     --status-inprogress-bg: #C2D5FF; --status-inprogress-text: #1957DF;
     --status-completed-bg: #BAFFBD; --status-completed-text: #4CAF50;
     --status-delayed-bg: #FFBFBA; --status-delayed-text: #F44336;
+
+    /* Cores de Clientes */
+    --cliente-pf-border: #0D56CE; --cliente-pf-bg: #B4EAFF; --cliente-pf-text: #1A94C4;
+    --cliente-pj-border: #2AC3FF; --cliente-pj-bg: #ABC6FF; --cliente-pj-text: #0D56CE;
 }
 
 @layer utilities {
@@ -106,6 +110,40 @@
     .text-status-delayed {
         color: var(--status-delayed-text);
     }
+
+    /* Cores de Clientes */
+    .border-l-darkblue {
+        border-left-color: var(--cliente-pj-border);
+    }
+    .border-l-lightblue {
+        border-left-color: var(--cliente-pf-border);
+    }
+    .bg-cliente-pf {
+        background-color: var(--cliente-pf-bg);
+    }
+    .bg-cliente-pj {
+        background-color: var(--cliente-pj-bg);
+    }
+    .text-cliente-pf {
+        color: var(--cliente-pf-text);
+    }
+    .text-cliente-pj {
+        color: var(--cliente-pj-text);
+    }
+    /* Cores da Borda das Demandas */
+    .border-l-andamento {
+        border-left-color: var(--status-inprogress-text);
+    }
+    .border-l-aguardando {
+        border-left-color: var(--status-wait-text);
+    }
+    .border-l-finalizado {
+        border-left-color: var(--status-completed-text);
+    }
+    .border-l-atrasada {
+        border-left-color: var(--status-delayed-text);
+    }
+
 }
 
 @keyframes checkPop {

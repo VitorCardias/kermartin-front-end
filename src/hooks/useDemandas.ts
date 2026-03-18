@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { authApi } from "../api/AuthService";
 import { usePerfil } from "./usePerfil";
 import { obterDataFormatoCorreto } from "../types/TiposDemandas";
@@ -21,23 +21,14 @@ export type DemandaAPI = {
 
 export type Demanda = DemandaAPI;
 
-/*
-type PaginacaoResponse = {
-  content: DemandaAPI[];
-  totalPages: number;
-};
-*/
-
 export const useDemandas = () => {
   const perfil = usePerfil();
-  const [demandas] = useState<Demanda[]>([]);
-  const [loading] = useState(true);
+  const [demandas, setDemandas] = useState<Demanda[]>([]);
+  const [loading, setLoading] = useState(true);
   const [paginaAtual, setPaginaAtual] = useState(0);
-  const [totalPaginas] = useState(1);
   const itensPorPagina = 10;
 
-  // Função para buscar demandas com paginação
-  /*
+  // Função para buscar demandas do escritório
   const buscarDemandas = async () => {
     try {
       if (!perfil?.id) {
@@ -46,43 +37,58 @@ export const useDemandas = () => {
       }
 
       setLoading(true);
-      const response = await authApi.get<PaginacaoResponse>(`/demanda/listar-por-escritorio/${perfil.id}`, {
-        params: { page: paginaAtual, size: itensPorPagina },
-      });
+      // Buscar todas as demandas do escritório combinando todos os status
+      const statuses = ['Finalizada', 'EmAndamento', 'RequerindoEquipe', 'Cancelada', 'Atrasada'];
+      let todasAsDemandas: Demanda[] = [];
 
-      const demandasFormatadas: Demanda[] = response.data.content.map((demanda: DemandaAPI) => ({
-        ...demanda,
-        escritorioId: demanda.criador.id,
-      }));
+      for (const status of statuses) {
+        try {
+          const response = await authApi.get<any>(`/demanda/listar-por-escritorio-statusdemanda/${status}`, {
+            params: { page: paginaAtual, size: itensPorPagina },
+          });
 
-      setDemandas(demandasFormatadas);
-      setTotalPaginas(response.data.totalPages);
-      setLoading(false);
+          const demandasData = Array.isArray(response.data)
+            ? response.data
+            : response.data.content || [];
+
+          todasAsDemandas = [...todasAsDemandas, ...demandasData];
+        } catch (error) {
+          console.warn(`Erro ao buscar demandas com status ${status}:`, error);
+        }
+      }
+
+      setDemandas(todasAsDemandas);
     } catch (error) {
       console.error("Erro ao buscar demandas:", error);
+    } finally {
       setLoading(false);
     }
   };
-  */
+
+  // Buscar demandas ao carregar ou quando a página muda
+  useEffect(() => {
+    if (perfil?.id) {
+      buscarDemandas();
+    }
+  }, [perfil?.id, paginaAtual]);
 
   // Função para cadastrar uma nova demanda
   const cadastrarDemanda = async (novaDemandaData: Omit<Demanda, 'id' | 'criador'>): Promise<Demanda | null> => {
     try {
       if (!perfil?.id) {
         console.error("Erro: Perfil do usuário não encontrado para cadastro.");
-        return null; // Retorna null ou lança um erro em caso de problema
+        return null;
       }
 
-      // A API espera o criador com id [17]
       const payload = {
         criador: { id: perfil.id },
         ...novaDemandaData,
       };
 
-      // Faz a chamada POST para a API. Esperamos a demanda criada no corpo da resposta
+      console.log("Payload completo enviado para API:", JSON.stringify(payload, null, 2));
+
       const response = await authApi.post<DemandaAPI>("/demanda", payload);
 
-      // Formata a demanda retornada pela API e a retorna
       if (response.data && response.data.id) {
         const demandaCriada: Demanda = {
           ...response.data
@@ -91,15 +97,17 @@ export const useDemandas = () => {
       }
 
       console.error("Cadastro realizado, mas a API não retornou a demanda esperada.");
-      return null; // Retorna null se a resposta não estiver no formato esperado.
+      return null;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao cadastrar demanda:", error);
-      // Pode-se tratar o erro:
-      // (ex: exibir um toast) no componente que chamou esta função
-      // throw error; 
-      // Opcional: lançar o erro para ser capturado externamente
-      return null; // Retorna null em caso de erro
+      if (error.response?.data) {
+        console.error("Detalhes do erro da API:", JSON.stringify(error.response.data, null, 2));
+      }
+      if (error.response?.status === 400) {
+        console.error("Erro 400: Verifique os campos obrigatórios e o formato dos dados");
+      }
+      return null;
     }
   };
 
@@ -135,15 +143,14 @@ export const useDemandas = () => {
   };
 
   // Função para deletar uma demanda existente
-  const deletarDemanda = async (demandaParaDeletar: Demanda) => {
+  const deletarDemanda = async (demandaId: string) => {
     try {
-      
       // Chamada Delete para a API.
-      await authApi.delete(`/demanda/${demandaParaDeletar.id}`);
+      await authApi.delete(`/demanda/${demandaId}`);
       return true;
 
     } catch (error) {
-      console.error("Erro ao editar demanda:", error);
+      console.error("Erro ao deletar demanda:", error);
       return null;
     }
   }
@@ -153,8 +160,8 @@ export const useDemandas = () => {
     loading,
     paginaAtual,
     setPaginaAtual,
-    totalPaginas,
     itensPorPagina,
+    buscarDemandas,
     cadastrarDemanda,
     editarDemanda,
     deletarDemanda
