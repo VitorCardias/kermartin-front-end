@@ -141,8 +141,10 @@ const CadastroDemanda: React.FC<CadastroDemandaModalProps> = ({ isOpen, onClose,
           conclusaoPrazo: '',
           porcentagemConclusao: 0,
         });
-        onSuccess?.();
-        setTimeout(() => onClose(), 1500);
+        setTimeout(() => {
+          onSuccess?.();
+          onClose();
+        }, 1500);
       } else {
         setAlert({
           isOpen: true,

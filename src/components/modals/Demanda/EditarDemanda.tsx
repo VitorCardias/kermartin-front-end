@@ -4,7 +4,7 @@ import AlertModal from '../AlertModal';
 import { useDemandas } from '../../../Hooks/useDemandas';
 import { useClientes } from '../../../Hooks/useClientes';
 import { useFuncionarios } from '../../../Hooks/useFuncionarios';
-import { PrioridadeDemanda, converterParaFormatoDateTimeLocal } from '../../../types/TiposDemandas';
+import { converterParaFormatoDateTimeLocal, PrioridadeDemanda } from '../../../types/TiposDemandas';
 
 type EditarDemandaProps = {
   isOpen: boolean;
@@ -41,9 +41,32 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
   const [loading, setLoading] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
+  // Função para obter cores dinâmicas baseadas no status
+  const getStatusColors = (status: string) => {
+    switch (status) {
+      case 'RequerindoEquipe':
+        return { bg: 'bg-status-wait', text: 'text-status-wait' };
+      case 'EmAndamento':
+        return { bg: 'bg-status-inprogress', text: 'text-status-inprogress' };
+      case 'Finalizada':
+        return { bg: 'bg-status-completed', text: 'text-status-completed' };
+      case 'Atrasada':
+        return { bg: 'bg-status-delayed', text: 'text-status-delayed' };
+      case 'Cancelada':
+        return { bg: 'bg-gray-400', text: 'text-gray-700' };
+      default:
+        return { bg: 'bg-status-wait', text: 'text-status-wait' };
+    }
+  };
+
+  const { bg: statusBgColor, text: statusTextColor } = getStatusColors(formData.statusDemanda);
+
   // Carregar dados da demanda quando modal abre
   useEffect(() => {
     if (isOpen && demanda) {
+
+      setAlert({ isOpen: false, titulo: '', mensagem: '', tipo: 'aviso' });
+
       setFormData({
         id: demanda.id,
         titulo: demanda.titulo || '',
@@ -134,28 +157,17 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
 
     setLoading(true);
     try {
-      const formatarDataParaAPI = (dateTimeStr: string | ''): string | null => {
-        if (!dateTimeStr) return null;
-        const date = new Date(dateTimeStr);
-        const dia = String(date.getDate()).padStart(2, "0");
-        const mes = String(date.getMonth() + 1).padStart(2, "0");
-        const ano = date.getFullYear();
-        const horas = String(date.getHours()).padStart(2, "0");
-        const minutos = String(date.getMinutes()).padStart(2, "0");
-        const segundos = String(date.getSeconds()).padStart(2, "0");
-        return `${dia}-${mes}-${ano} ${horas}:${minutos}:${segundos}`;
-      };
 
       const demandaPayload: any = {
         id: formData.id,
-        criador: { id: '' }, // Será mantido do original
+        criador: demanda.criador, // Será mantido do original
         titulo: formData.titulo.trim(),
         descricao: formData.descricao.trim() || null,
         clienteDto: formData.clienteDto,
         prioridadeDemanda: formData.prioridadeDemanda,
         statusDemanda: formData.statusDemanda,
-        inicioPrazo: formatarDataParaAPI(formData.inicioPrazo),
-        conclusaoPrazo: formatarDataParaAPI(formData.conclusaoPrazo),
+        inicioPrazo: formData.inicioPrazo,
+        conclusaoPrazo: formData.conclusaoPrazo,
         porcentagemConclusao: formData.porcentagemConclusao,
         responsavelList: formData.responsavelList,
       };
@@ -169,8 +181,10 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
           mensagem: 'Demanda atualizada com sucesso!',
           tipo: 'sucesso',
         });
-        onSuccess?.();
-        setTimeout(() => onClose(), 1500);
+        setTimeout(() => {
+          onSuccess?.();
+          onClose();
+        }, 1500);
       } else {
         setAlert({
           isOpen: true,
@@ -204,8 +218,10 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
           mensagem: 'Demanda deletada com sucesso!',
           tipo: 'sucesso',
         });
-        onSuccess?.();
-        setTimeout(() => onClose(), 1500);
+        setTimeout(() => {
+          onSuccess?.();
+          onClose();
+        }, 1500);
       } else {
         setAlert({
           isOpen: true,
@@ -347,9 +363,9 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
                   name="statusDemanda"
                   value={formData.statusDemanda}
                   onChange={handleChange}
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className={`w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 font-semibold text-sm ${statusTextColor} ${statusBgColor}`}
                 >
-                  <option value="RequerindoEquipe">Aguardando</option>
+                  <option value="RequerindoEquipe">Aguardando por Equipe</option>
                   <option value="EmAndamento">Em Andamento</option>
                   <option value="Finalizada">Finalizado</option>
                   <option value="Atrasada">Atrasada</option>

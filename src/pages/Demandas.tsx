@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Titulo from "../components/Titulo";
 import Pesquisar from "../components/FiltroPesquisar";
 import CardDemanda from "../components/CardDemanda";
@@ -12,6 +12,11 @@ const Demandas: React.FC = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [demandaSelecionada, setDemandaSelecionada] = useState<any>(null);
     const [termoPesquisa, setTermoPesquisa] = useState("");
+
+    // Garantir que as demandas sejam carregadas ao montar o componente
+    useEffect(() => {
+        buscarDemandas();
+    }, []);
 
     // Filtrar demandas baseado no termo de pesquisa
     const demandasFiltradas = demandas.filter((demanda) =>

@@ -41,7 +41,7 @@ authApi.interceptors.response.use(
     const originalRequest = error.config;
 
     // Se receber um erro 403 e não for uma tentativa de refresh
-    if (error.response?.status === 403 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       console.log("Interceptador: Recebeu erro 403 para a requisição:", originalRequest.url);
 

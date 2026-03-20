@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { authApi } from "../api/AuthService";
 import { usePerfil } from "./usePerfil";
-import { obterDataFormatoCorreto } from "../types/TiposDemandas";
+import { converterDataTimeLocalParaISO } from "../types/TiposDemandas";
 
 export type DemandaAPI = {
   id: string;
@@ -21,74 +21,82 @@ export type DemandaAPI = {
 
 export type Demanda = DemandaAPI;
 
+type PaginacaoResponse = {
+  content: DemandaAPI[];
+  totalPages: number;
+};
+
 export const useDemandas = () => {
   const perfil = usePerfil();
   const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [loading, setLoading] = useState(true);
   const [paginaAtual, setPaginaAtual] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(1);
   const itensPorPagina = 10;
 
-  // Função para buscar demandas do escritório
+  // Função para buscar demandas com paginação
   const buscarDemandas = async () => {
     try {
       if (!perfil?.id) {
-        console.error("Erro: Perfil do usuário não encontrado.");
+        setLoading(false);
         return;
       }
 
       setLoading(true);
-      // Buscar todas as demandas do escritório combinando todos os status
-      const statuses = ['Finalizada', 'EmAndamento', 'RequerindoEquipe', 'Cancelada', 'Atrasada'];
-      let todasAsDemandas: Demanda[] = [];
+      
+      // Vamos direto para a rota que o backend permite para este usuário
+      const response = await authApi.get<PaginacaoResponse | DemandaAPI[]>(`/demanda`, {
+        params: { page: paginaAtual, size: itensPorPagina },
+      });
 
-      for (const status of statuses) {
-        try {
-          const response = await authApi.get<any>(`/demanda/listar-por-escritorio-statusdemanda/${status}`, {
-            params: { page: paginaAtual, size: itensPorPagina },
-          });
+      // Verifica a estrutura da resposta e adapta
+      let demandasData: DemandaAPI[] = [];
+      let totalPaginasData: number = 1;
 
-          const demandasData = Array.isArray(response.data)
-            ? response.data
-            : response.data.content || [];
-
-          todasAsDemandas = [...todasAsDemandas, ...demandasData];
-        } catch (error) {
-          console.warn(`Erro ao buscar demandas com status ${status}:`, error);
-        }
+      if (Array.isArray(response.data)) {
+        // Se for um array direto
+        demandasData = response.data;
+        totalPaginasData = 1;
+      } else if (response.data.content && Array.isArray(response.data.content)) {
+        // Se for a estrutura com content e totalPages
+        demandasData = response.data.content;
+        totalPaginasData = response.data.totalPages || 1;
       }
 
-      setDemandas(todasAsDemandas);
-    } catch (error) {
+      const demandasFormatadas: Demanda[] = demandasData.map((demanda: DemandaAPI) => ({
+        ...demanda,
+        escritorioId: demanda.criador.id,
+      }));
+
+      setDemandas(demandasFormatadas);
+      setTotalPaginas(totalPaginasData);
+      setLoading(false);
+      
+    } catch (error: any) {
       console.error("Erro ao buscar demandas:", error);
-    } finally {
+      setDemandas([]);
       setLoading(false);
     }
   };
 
-  // Buscar demandas ao carregar ou quando a página muda
-  useEffect(() => {
-    if (perfil?.id) {
-      buscarDemandas();
-    }
-  }, [perfil?.id, paginaAtual]);
-
   // Função para cadastrar uma nova demanda
   const cadastrarDemanda = async (novaDemandaData: Omit<Demanda, 'id' | 'criador'>): Promise<Demanda | null> => {
     try {
-      if (!perfil?.id) {
+      if (!perfil?.idEscritorio) {
         console.error("Erro: Perfil do usuário não encontrado para cadastro.");
-        return null;
+        return null; // Retorna null ou lança um erro em caso de problema
       }
 
+      // A API espera o criador com id [17]
       const payload = {
-        criador: { id: perfil.id },
+        criador: { id: perfil.idEscritorio },
         ...novaDemandaData,
       };
 
-      console.log("Payload completo enviado para API:", JSON.stringify(payload, null, 2));
-
+      // Faz a chamada POST para a API. Esperamos a demanda criada no corpo da resposta
       const response = await authApi.post<DemandaAPI>("/demanda", payload);
 
+      // Formata a demanda retornada pela API e a retorna
       if (response.data && response.data.id) {
         const demandaCriada: Demanda = {
           ...response.data
@@ -97,29 +105,28 @@ export const useDemandas = () => {
       }
 
       console.error("Cadastro realizado, mas a API não retornou a demanda esperada.");
-      return null;
+      return null; // Retorna null se a resposta não estiver no formato esperado.
 
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao cadastrar demanda:", error);
-      if (error.response?.data) {
-        console.error("Detalhes do erro da API:", JSON.stringify(error.response.data, null, 2));
-      }
-      if (error.response?.status === 400) {
-        console.error("Erro 400: Verifique os campos obrigatórios e o formato dos dados");
-      }
-      return null;
+      // Pode-se tratar o erro:
+      // (ex: exibir um toast) no componente que chamou esta função
+      // throw error; 
+      // Opcional: lançar o erro para ser capturado externamente
+      return null; // Retorna null em caso de erro
     }
   };
 
   // Função para editar uma demanda existente
   const editarDemanda = async (demandaEditada: Demanda): Promise<Demanda | null> => {
     try {
-      // Chamada PUT para a API. Esperamos a demanda atualizada no corpo da resposta
-      const demandaEditadaPayload: Demanda = {
+      // Converter as datas do formato datetime-local para ISO format
+      const demandaEditadaPayload: any = {
         ...demandaEditada,
-        inicioPrazo: obterDataFormatoCorreto(demandaEditada.inicioPrazo),
-        conclusaoPrazo: obterDataFormatoCorreto(demandaEditada.conclusaoPrazo)
-      }
+        inicioPrazo: demandaEditada.inicioPrazo ? converterDataTimeLocalParaISO(demandaEditada.inicioPrazo) : null,
+        conclusaoPrazo: demandaEditada.conclusaoPrazo ? converterDataTimeLocalParaISO(demandaEditada.conclusaoPrazo) : null,
+      };
+
       const response = await authApi.put<DemandaAPI>("/demanda", demandaEditadaPayload);
 
       // Formata a demanda retornada pela API e a retorna
@@ -133,18 +140,17 @@ export const useDemandas = () => {
       console.error("Edição realizada, mas a API não retornou a demanda esperada.");
       return null; // Retorna null se a resposta não estiver no formato esperado
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao editar demanda:", error);
-      // Você pode querer tratar o erro no componente que chamou esta função
-      // throw error; 
-      // Opcional: lançar o erro
-      return null; // Retorna null em caso de erro [15]
+      return null; // Retorna null em caso de erro
     }
   };
 
   // Função para deletar uma demanda existente
-  const deletarDemanda = async (demandaId: string) => {
+  const deletarDemanda = async (demandaParaDeletar: Demanda | string) => {
     try {
+      const demandaId = typeof demandaParaDeletar === 'string' ? demandaParaDeletar : demandaParaDeletar.id;
+      
       // Chamada Delete para a API.
       await authApi.delete(`/demanda/${demandaId}`);
       return true;
@@ -155,11 +161,19 @@ export const useDemandas = () => {
     }
   }
 
+  // Chamar buscarDemandas quando o perfil estiver pronto
+  useEffect(() => {
+    if (perfil?.id) {
+      buscarDemandas();
+    }
+  }, [perfil]);
+
   return {
     demandas,
     loading,
     paginaAtual,
     setPaginaAtual,
+    totalPaginas,
     itensPorPagina,
     buscarDemandas,
     cadastrarDemanda,

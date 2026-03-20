@@ -90,13 +90,16 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
     
     setLoading(true);
     try {
-      const novoFuncionario = {
-        ...formData,
-        nomeCompleto: formatarTexto(formData.nomeCompleto),
-        nomeUsuario: formData.nomeUsuario.trim(),
-        emailCadastro: formatarEmail(formData.emailCadastro),
-        cpf: removerFormatacao(formData.cpf),
-        qualificacaoFuncionario: formatarTexto(formData.qualificacaoFuncionario),
+      const { id, ...novoFuncionarioData } = formData;
+      
+      const novoFuncionario: Funcionario = {
+        id: id || "",
+        nomeCompleto: formatarTexto(novoFuncionarioData.nomeCompleto),
+        nomeUsuario: novoFuncionarioData.nomeUsuario.trim(),
+        emailCadastro: formatarEmail(novoFuncionarioData.emailCadastro),
+        cpf: removerFormatacao(novoFuncionarioData.cpf),
+        senha: novoFuncionarioData.senha,
+        qualificacaoFuncionario: formatarTexto(novoFuncionarioData.qualificacaoFuncionario),
       };
 
       await onCadastro(novoFuncionario);

@@ -10,22 +10,78 @@ export const obterDataFormatoCorreto = (date: string | null) => {
   return `${dia}-${mes}-${ano} ${horas}:${minutos}:${segundos}`;
 };
 
-// Função para converter a string "DD-MM-YYYY HH:mm:ss" para "YYYY-MM-DDTHH:mm"
-export const converterParaFormatoDateTimeLocal = (dateTimeStr: string | null): string => {
-  if (dateTimeStr) {
-    // Dividir a string em data e hora
-    const [datePart, timePart] = dateTimeStr.split(' ');
-    // Dividir a parte da data em dia, mês e ano
-    const [day, month, year] = datePart.split('-');
-    // Dividir a parte da hora em horas, minutos e segundos (ignoramos segundos para datetime-local)
-    const [hours, minutes] = timePart.split(':');
+// Função para converter do formato datetime-local ("YYYY-MM-DDTHH:mm") para formato brasileiro "DD-MM-YYYY HH:mm:ss"
+export const converterDataTimeLocalParaISO = (dateTimeStr: string | null): string | null => {
+  if (!dateTimeStr) return null;
 
-    // Montar a string no formato YYYY-MM-DDTHH:mm
+  try {
+    // Formato datetime-local é "YYYY-MM-DDTHH:mm"
+    const [datePart, timePart] = dateTimeStr.split('T');
+    if (!datePart || !timePart) {
+      return null;
+    }
+
+    const [year, month, day] = datePart.split('-');
+    const [hours, minutes] = timePart.split(':');
+    
+    // Converter para formato brasileiro "DD-MM-YYYY HH:mm:ss"
+    const dataBrasileira = `${day}-${month}-${year} ${hours}:${minutes}:00`;
+    
+    return dataBrasileira;
+  } catch (error) {
+    console.error('Erro ao converter data:', error, dateTimeStr);
+    return null;
+  }
+};
+
+// Função para converter a string para o formato "YYYY-MM-DDTHH:mm" esperado pelo input datetime-local
+export const converterParaFormatoDateTimeLocal = (dateTimeStr: string | null): string => {
+  if (!dateTimeStr) return "";
+
+  try {
+    let date: Date;
+
+    // Se contém 'T', provavelmente é ISO format (2026-03-18T16:21:00)
+    if (dateTimeStr.includes('T')) {
+      date = new Date(dateTimeStr);
+    } 
+    // Se contém espaço e '-', é formato DD-MM-YYYY HH:mm:ss
+    else if (dateTimeStr.includes(' ') && dateTimeStr.includes('-')) {
+      const [datePart, timePart] = dateTimeStr.split(' ');
+      const [day, month, year] = datePart.split('-');
+      const [hours, minutes] = timePart.split(':');
+      
+      // Usar UTC para evitar problemas de fuso horário
+      date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes)));
+    }
+    // Se contém '/', é formato DD/MM/YYYY HH:mm:ss
+    else if (dateTimeStr.includes('/')) {
+      const [datePart, timePart] = dateTimeStr.split(' ');
+      const [day, month, year] = datePart.split('/');
+      const [hours, minutes] = timePart ? timePart.split(':') : ['00', '00'];
+      
+      date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes)));
+    }
+    else {
+      date = new Date(dateTimeStr);
+    }
+
+    if (isNaN(date.getTime())) {
+      return "";
+    }
+
+    // Formatar para YYYY-MM-DDTHH:mm usando getUTCDate, getUTCMonth, etc
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+
     return `${year}-${month}-${day}T${hours}:${minutes}`;
-  } else {
+  } catch (error) {
+    console.error('Erro ao converter data:', error, dateTimeStr);
     return "";
   }
-  
 };
 
 export const PrioridadeDemanda = ["Alta", "Media", "Baixa"] as const;

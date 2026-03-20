@@ -76,18 +76,22 @@ export const useFuncionarios = () => {
   const cadastrarFuncionario = async (novoFuncionario: Funcionario) => {
     try {
       if (!perfil?.id) {
-        throw new Error("Erro: Perfil do usuário não encontrado.");
+        console.error("Erro: Perfil do usuário não encontrado.");
+        return;
       }
+
+      console.log("ID do Escritório que está sendo enviado:", perfil.idEscritorio);
 
       await authApi.post("/funcionario/cadastro", {
         ...novoFuncionario,
-        escritorio: perfil.idEscritorio,
+        escritorioDTO: { id: perfil.idEscritorio },
+      
       });
 
       await buscarFuncionarios(); // Recarrega a lista após o cadastro
     } catch (error) {
       console.error("Erro ao cadastrar Funcionario:", error);
-      throw error; // Relançar o erro para o componente modal
+      throw error;
     }
   };
 

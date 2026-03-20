@@ -20,7 +20,7 @@ interface CardTarefaProps {
 const CardTarefa: React.FC<CardTarefaProps> = ({
     titulo = "Solicitar Extrato Analítico",
     prioridade = "baixa",
-    dataVencimento = "19/03/2026",
+    dataVencimento = "21/03/2026",
     responsaveis = ['João Silva', 'Maria Oliveira'],
     descricao = "Testando escrever algo para aparecer quando precisar , pode ser qualquer coisa a ideia é que quando o usuário clique no card desça um elemento com a descrição da tarefa e o icone de arrow aponte para baixo ao invés de apontar para o lado e se o usuário clicar novamente no card a descrição sobe e o icone de arrow volta ao normal ",
     onDelete

@@ -42,7 +42,7 @@ const Navbar: React.FC = () => {
                 {/* Esquerda: Razão Social do Escritório */}
                 <div className="flex-1 min-w-0">
                     {!isSuperAdmin && perfil?.nomeEscritorio && (
-                        <span className="text-xs sm:text-sm font-semibold text-gray-800 truncate">
+                        <span className="text-sm sm:text-xl  font-semibold text-gray-800 truncate">
                             {perfil.nomeEscritorio}
                         </span>
                     )}
