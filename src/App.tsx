@@ -19,7 +19,7 @@ import { AuthProvider, AuthContext } from "./contexts/AuthContext";
 function AppContent() {
   const { estaAutenticado, carregando, usuario } = useContext(AuthContext);
 
-  // Carregamento entre as rotas
+  // Carregamento entre as rotas - redireciona para login se não autenticado
   if (carregando) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -28,10 +28,22 @@ function AppContent() {
     );
   }
 
+  // Se não está autenticado, sempre redireciona para login
+  if (!estaAutenticado) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
   // Determinar rota padrão baseado no role
   const defaultRoute = usuario?.roles?.includes("ROLE_SUPER_ADMIN") 
     ? "/admin/escritorios" 
     : "/";
+
 
   return (
     <>
@@ -41,11 +53,11 @@ function AppContent() {
           {/* Rotas públicas */}
           <Route 
             path="/login" 
-            element={estaAutenticado ? <Navigate to="/" replace /> : <Login />} 
+            element={<Navigate to="/" replace />}
           />
           <Route 
             path="/cadastro" 
-            element={estaAutenticado ? <Navigate to="/" replace /> : <Cadastro />} 
+            element={<Navigate to="/" replace />}
           />
 
           {/* Rotas privadas (requer autenticação) */}
@@ -69,7 +81,7 @@ function AppContent() {
           </Route>
 
           {/* Rota padrão */}
-          <Route path="*" element={<Navigate to={estaAutenticado ? defaultRoute : "/login"} replace />} />
+          <Route path="*" element={<Navigate to={defaultRoute} replace />} />
         </Routes>
       </main>
     </>

@@ -5,8 +5,17 @@ import { type Usuario } from '../types/auth';
 import { authService } from '../api/AuthService';
 import { jwtDecode } from 'jwt-decode';
 
+type PerfilUsuario = {
+  id: string;
+  username: string;
+  tipoUsuario: "Escritorio" | "Funcionario";
+  nomeEscritorio: string;
+  idEscritorio: string;
+};
+
 interface AuthContextType {
   usuario: Usuario | null;
+  perfil: PerfilUsuario | null;
   carregando: boolean;
   error: string | null;
   estaAutenticado: boolean;
@@ -23,6 +32,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [perfil, setPerfil] = useState<PerfilUsuario | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [estaAutenticado, setEstaAutenticado] = useState(false);
@@ -44,12 +54,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
     }
   };
-  
+
+  // Buscar perfil do usuário
+  const buscarPerfil = async (username: string) => {
+    try {
+      const { authApi } = await import('../api/AuthService');
+      const response = await authApi.get<PerfilUsuario>(`/usuario/perfil/${username}`);
+      setPerfil(response.data);
+    } catch (error) {
+      console.error('Erro ao obter perfil:', error);
+    }
+  };
 
   // Verificar se há um token salvo ao carregar a aplicação
   useEffect(() => {
     const checkAuth = async () => {
-      setCarregando(true); // Defina como true no início da verificação
+      setCarregando(true);
 
       try {
         const token = localStorage.getItem('token');
@@ -58,7 +78,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (!token || !refreshToken) {
           setEstaAutenticado(false);
           setUsuario(null);
-          setCarregando(false); // Verificação rápida: sem tokens
+          setPerfil(null);
+          setCarregando(false);
           return;
         }
 
@@ -66,7 +87,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const usuario = getUsuarioFromToken(token);
           setUsuario(usuario);
           setEstaAutenticado(true);
-          setCarregando(false); // Token válido
+          // Buscar perfil em background (não bloqueia a verificação)
+          buscarPerfil(usuario.username);
+          setCarregando(false);
         } catch (error) {
           try {
             const tokens = await authService.refreshToken(refreshToken);
@@ -75,20 +98,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const usuario = getUsuarioFromToken(tokens.token);
             setUsuario(usuario);
             setEstaAutenticado(true);
-            setCarregando(false); // Refresh bem-sucedido
+            buscarPerfil(usuario.username);
+            setCarregando(false);
           } catch (refreshError) {
             authService.logout();
             setUsuario(null);
+            setPerfil(null);
             setEstaAutenticado(false);
-            setCarregando(false); // Falha no refresh
+            setCarregando(false);
           }
         }
       } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
-        setCarregando(false); // Erro geral na verificação
-      } finally {
-        // O finally ainda pode ser útil para logs ou outras ações finais
-        console.log('Verificação de autenticação concluída. Carregando:', carregando);
+        setCarregando(false);
       }
     };
 
@@ -112,6 +134,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const user = getUsuarioFromToken(tokens.token);
       setUsuario(user);
       setEstaAutenticado(true);
+
+      // Buscar perfil em background
+      buscarPerfil(user.username);
 
       // Retornar o usuario
       return user;
@@ -148,6 +173,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     authService.logout();
     setUsuario(null);
+    setPerfil(null);
     setEstaAutenticado(false);
     // Redireciona para a página de login após o logout usando o serviço
     authService.redirectToLogin();
@@ -157,6 +183,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     <AuthContext.Provider
       value={{
         usuario,
+        perfil,
         carregando,
         error,
         estaAutenticado,

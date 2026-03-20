@@ -1,27 +1,8 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "./useAuth";
-import { authApi } from "../api/AuthService";
-
-type PerfilUsuario = {
-  id: string;
-  username: string;
-  tipoUsuario: "Escritorio" | "Funcionario";
-  nomeEscritorio: string;
-  idEscritorio: string;
-};
+import { useContext } from "react";
+import { AuthContext } from "../contexts/AuthContext";
 
 export const usePerfil = () => {
-  const { usuario } = useAuth();
-  const [perfil, setPerfil] = useState<PerfilUsuario | null>(null);
-
-  useEffect(() => {
-    if (usuario) {
-      authApi.get<PerfilUsuario>("/usuario/perfil/" + usuario.username) // Usando authApi
-        .then((response) => setPerfil(response.data))
-        .catch((error) => console.error("Erro ao obter perfil:", error));
-    }
-  }, [usuario]);
-
+  const { perfil } = useContext(AuthContext);
   return perfil;
 };
 
