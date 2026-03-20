@@ -20,7 +20,7 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
     titulo = "Solicitar Extrato Analítico",
     cliente = "Banco XYZ",
     prioridade = "baixa",
-    dataVencimento = "22/03/2026",
+    dataVencimento = "",
     responsaveis = [],
     onDelete,
     demanda,
@@ -28,7 +28,7 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
 }) => {
     const { 
         textoVencimento, corVencimento,
-        obterStatus, toggleExpandir } = useTarefa(dataVencimento, responsaveis);
+        obterStatus, toggleExpandir, formatarDataExibicao } = useTarefa(dataVencimento, responsaveis);
 
     const [modalOpen, setModalOpen] = useState(false);
     let statusAtual = obterStatus();
@@ -79,7 +79,7 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
                             <Titulo tamanho="text-sm sm:text-base md:text-lg">{titulo} - {cliente}</Titulo>
                             <div className='flex flex-col sm:flex-row gap-1 sm:gap-3 md:gap-5 text-muted text-xs sm:text-xs md:text-sm'>
                                 <p style={corVencimento ? { color: corVencimento } : {}} className='truncate'>
-                                    Vence em: {dataVencimento} ({textoVencimento})
+                                    Vence em: {formatarDataExibicao(dataVencimento)} ({textoVencimento})
                                 </p>
                                 <p className='truncate'>Responsável: {responsaveis.length > 0 ? responsaveis.join(', ') : 'Sem Atribuições'}</p>
                             </div>

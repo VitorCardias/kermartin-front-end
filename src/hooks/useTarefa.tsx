@@ -7,15 +7,52 @@ export const useTarefa = (dataVencimento: string, responsaveisIniciais: string[]
     const [responsaveis, setResponsaveis] = useState<string[]>(responsaveisIniciais);
     const [tarefaFinalizada, setTarefaFinalizada] = useState(false);
 
+    const extrairData = (data: string) => {
+        if (!data) return null;
+
+        const apenasData = data.split(' ')[0];
+        const partes = apenasData.split('-');   
+
+        if (partes.length !== 3) return null;
+
+        let dia, mes, ano;
+
+        if (partes[0].length === 4) {
+            // Formato ISO (YYYY-MM-DD)
+            [ano, mes, dia] = partes;
+        } else {
+            // Formato BR (DD/MM/YYYY)
+            [dia, mes, ano] = partes;
+        }
+        
+        return { dia, mes, ano };
+    }
+
+    const formatarDataExibicao = (data: string) => {
+        const dataExtraida = extrairData(data);
+        if (!dataExtraida) return data;
+
+        const { dia, mes, ano } = dataExtraida;
+        return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+    }
+
     // Função para calcular dias até vencer
     const calcularDiasAteVencer = (data: string) => {
-        const [dia, mes, ano] = data.split('/').map(Number);
-        const dataVencimento = new Date(ano, mes - 1, dia);
+        const dataExtraida = extrairData(data);
+        if (!dataExtraida) return 0;
+
+        const { dia, mes, ano } = dataExtraida;
+
+        const dataVencimento = new Date(Number(ano), Number(mes) - 1, Number(dia));
         const hoje = new Date();
+
+        // Zerando horas para comparar só as datas
         hoje.setHours(0, 0, 0, 0);
         dataVencimento.setHours(0, 0, 0, 0);
-
+        
+        // calcula a diferença em milissegundos das duas datas
         const diferenca = dataVencimento.getTime() - hoje.getTime();
+        // converte a diferença em dias
         const dias = Math.ceil(diferenca / (1000 * 60 * 60 * 24));
 
         return dias;
@@ -140,6 +177,7 @@ export const useTarefa = (dataVencimento: string, responsaveisIniciais: string[]
         responsaveis,
         temEquipe,
         textoResponsaveis,
+        formatarDataExibicao,
         obterStatus,
         toggleExpandir,
         toggleChecked,
