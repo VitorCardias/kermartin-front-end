@@ -3,6 +3,11 @@ import type { Cliente } from "../../../Hooks/useClientes";
 import { TipoCliente } from "../../../types/TiposClientes";
 import Titulo from "../../Titulo";
 import AlertModal from "../AlertModal";
+import {
+  formatarCPFEnquantoDigita,
+  formatarCNPJEnquantoDigita,
+  formatarTelefoneEnquantoDigita,
+} from "../../../utils/formatters";
 
 type EditarClienteModalProps = {
   isOpen: boolean;
@@ -36,7 +41,17 @@ const EditarCliente: React.FC<EditarClienteModalProps> = ({ isOpen, cliente, onC
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value } as Cliente));
+    let novoValor = value;
+
+    if (name === "cpf") {
+      novoValor = formatarCPFEnquantoDigita(value);
+    } else if (name === "cnpj") {
+      novoValor = formatarCNPJEnquantoDigita(value);
+    } else if (name === "numeroTelefoneContato" || name === "numeroWhatsAppContato") {
+      novoValor = formatarTelefoneEnquantoDigita(value);
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: novoValor } as Cliente));
   };
 
   const validateForm = (): string | null => {
@@ -144,6 +159,7 @@ const EditarCliente: React.FC<EditarClienteModalProps> = ({ isOpen, cliente, onC
                 name={tipoCliente === "PF" ? "cpf" : "cnpj"}
                 value={tipoCliente === "PF" && "cpf" in formData ? formData.cpf : tipoCliente === "PJ" && "cnpj" in formData ? formData.cnpj : ""}
                 onChange={handleChange}
+                maxLength={tipoCliente === "PF" ? 14 : 18}
                 className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 placeholder={tipoCliente === "PF" ? "000.000.000-00" : "00.000.000/0000-00"}
                 required
@@ -174,6 +190,7 @@ const EditarCliente: React.FC<EditarClienteModalProps> = ({ isOpen, cliente, onC
                 name="numeroTelefoneContato"
                 value={formData.numeroTelefoneContato}
                 onChange={handleChange}
+                maxLength={15}
                 className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 placeholder="(11) 9999-9999"
                 required
@@ -186,6 +203,7 @@ const EditarCliente: React.FC<EditarClienteModalProps> = ({ isOpen, cliente, onC
                 name="numeroWhatsAppContato"
                 value={formData.numeroWhatsAppContato}
                 onChange={handleChange}
+                maxLength={15}
                 className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 placeholder="(11) 99999-9999"
               />
@@ -216,7 +234,7 @@ const EditarCliente: React.FC<EditarClienteModalProps> = ({ isOpen, cliente, onC
               type="submit"
               disabled={loading}
               className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-md transition hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium">
-              {loading ? "Salvando..." : "Salvar"}
+              {loading ? "Salvando..." : "Salvar Alterações"}
             </button>
           </div>
         </form>

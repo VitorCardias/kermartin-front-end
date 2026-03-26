@@ -1,17 +1,22 @@
 import type React from "react";
 import Titulo from "./Titulo";
 import emailIcon from '../assets/icon-email.svg';
+import type { Funcionario } from "../Hooks/useFuncionarios";
 
 interface CardFuncionarioProps {
     nome?: string;
     email?: string;
     cargo?: string;
+    funcionario?: Funcionario & { statusConta?: string };
+    onEditar?: (funcionario: Funcionario & { statusConta?: string }) => void;
 }
 
 const CardFuncionario: React.FC<CardFuncionarioProps> = ({ 
     nome = "Vitor Serra Cardias", 
     email = "vitor.cardias@example.com", 
-    cargo = "Desenvolvedor / Analista de Sistemas" 
+    cargo = "Desenvolvedor / Analista de Sistemas",
+    funcionario,
+    onEditar
 }) => {
 
     return (
@@ -47,7 +52,12 @@ const CardFuncionario: React.FC<CardFuncionarioProps> = ({
                     <div className='flex flex-row items-center justify-end gap-2 sm:gap-3 w-full sm:w-auto'>
                         <button 
                             className='flex-1 sm:flex-none text-xs sm:text-sm bg-primary text-white px-3 sm:px-4 py-2 rounded hover:brightness-110 transition hover:-translate-y-1 cursor-pointer whitespace-nowrap'
-                            onClick={(e) => { e.stopPropagation();}}
+                            onClick={(e) => { 
+                                e.stopPropagation();
+                                if (funcionario && onEditar) {
+                                    onEditar(funcionario);
+                                }
+                            }}
                         >
                             Editar
                         </button>

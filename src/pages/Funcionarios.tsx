@@ -3,13 +3,15 @@ import Titulo from "../components/Titulo";
 import Pesquisar from "../components/FiltroPesquisar";
 import CardFuncionario from "../components/CardFuncionario";
 import CadastroFuncionario from "../components/modals/Funcionario/CadastroFuncionario";
-import { useFuncionarios } from "../Hooks/useFuncionarios";
+import EditarFuncionario from "../components/modals/Funcionario/EditarFuncionario";
+import { useFuncionarios, type Funcionario } from "../Hooks/useFuncionarios";
 
 const Funcionarios: React.FC = () => {
 
-    const [modalOpen, setModalOpen] = useState(false);
+    const [modalCadastroOpen, setModalCadastroOpen] = useState(false);
+    const [funcionarioSelecionado, setFuncionarioSelecionado] = useState<(Funcionario & { statusConta?: string }) | undefined>(undefined);
     const [termoPesquisa, setTermoPesquisa] = useState("");
-    const { funcionarios, loading, cadastrarFuncionario } = useFuncionarios();
+    const { funcionarios, loading, cadastrarFuncionario, editarFuncionario, alterarSenhaFuncionario } = useFuncionarios();
 
     // Filtrar funcionários baseado no termo de pesquisa
     const funcionariosFiltrados = funcionarios.filter((funcionario) =>
@@ -17,6 +19,10 @@ const Funcionarios: React.FC = () => {
         funcionario.emailCadastro.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
         funcionario.qualificacaoFuncionario.toLowerCase().includes(termoPesquisa.toLowerCase())
     );
+
+    const handleEditarFuncionario = (funcionario: Funcionario & { statusConta?: string }) => {
+        setFuncionarioSelecionado(funcionario);
+    };
 
     return (
         <>
@@ -28,7 +34,7 @@ const Funcionarios: React.FC = () => {
                     </div>
                     <button 
                         className="text-xs sm:text-sm bg-primary text-white px-3 sm:px-4 py-2 rounded hover:brightness-110 transition hover:-translate-y-1 cursor-pointer whitespace-nowrap w-full sm:w-auto"
-                        onClick={() => setModalOpen(true)}
+                        onClick={() => setModalCadastroOpen(true)}
                     >
                         Cadastrar Funcionário
                     </button>
@@ -60,16 +66,28 @@ const Funcionarios: React.FC = () => {
                                 nome={funcionario.nomeCompleto}
                                 email={funcionario.emailCadastro}
                                 cargo={funcionario.qualificacaoFuncionario}
+                                funcionario={funcionario}
+                                onEditar={handleEditarFuncionario}
                             />
                         ))
                     )}
                 </div>
             </div>
             <CadastroFuncionario
-                isOpen={modalOpen}
-                onClose={() => setModalOpen(false)}
+                isOpen={modalCadastroOpen}
+                onClose={() => setModalCadastroOpen(false)}
                 onCadastro={cadastrarFuncionario}
             />
+            {funcionarioSelecionado && (
+                <EditarFuncionario
+                    funcionario={funcionarioSelecionado}
+                    onClose={() => {
+                        setFuncionarioSelecionado(undefined);
+                    }}
+                    onUpdate={editarFuncionario}
+                    alterarSenha={alterarSenhaFuncionario}
+                />
+            )}
         </>
     );
 }

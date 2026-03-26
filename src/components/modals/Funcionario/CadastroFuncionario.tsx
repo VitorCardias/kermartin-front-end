@@ -8,11 +8,21 @@ import {
 } from "../../../utils/formatters";
 import Titulo from "../../Titulo";
 import AlertModal from "../AlertModal";
+// import { authApi } from "../../../api/AuthService"; // ⚠️ Comentado: Aguardando endpoints no backend
 
 type CadastroFuncionarioModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onCadastro: (novoFuncionario: Funcionario) => Promise<void>;
+};
+
+type ErrosCampo = {
+  nomeCompleto?: string;
+  cpf?: string;
+  qualificacaoFuncionario?: string;
+  emailCadastro?: string;
+  nomeUsuario?: string;
+  senha?: string;
 };
 
 const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, onClose, onCadastro }) => {
@@ -28,6 +38,8 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
     qualificacaoFuncionario: "",
   });
 
+  const [errosCampo, setErrosCampo] = useState<ErrosCampo>({});
+
   const [alert, setAlert] = useState({
     isOpen: false,
     titulo: "",
@@ -36,6 +48,143 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
   });
 
   const [loading, setLoading] = useState(false);
+
+  // Validações específicas por campo (síncronas)
+  const validarCampo = (name: string, value: string): string | null => {
+    switch (name) {
+      case "nomeCompleto":
+        if (!value.trim()) return "Nome completo é obrigatório";
+        if (value.trim().length < 5) return "Nome deve ter no mínimo 5 caracteres";
+        return null;
+      
+      case "cpf":
+        if (!value.trim()) return "CPF é obrigatório";
+        const cpfLimpo = removerFormatacao(value);
+        if (cpfLimpo.length !== 11) return "CPF deve conter 11 dígitos";
+        return null;
+      
+      case "qualificacaoFuncionario":
+        if (!value.trim()) return "Qualificação/Cargo é obrigatório";
+        if (value.trim().length < 3) return "Qualificação deve ter no mínimo 3 caracteres";
+        return null;
+      
+      case "emailCadastro":
+        if (!value.trim()) return "E-mail é obrigatório";
+        if (!value.includes("@") || !value.includes(".")) return "E-mail inválido";
+        return null;
+      
+      case "nomeUsuario":
+        if (!value.trim()) return "Nome de usuário é obrigatório";
+        if (value.trim().length < 3) return "Usuário deve ter no mínimo 3 caracteres";
+        if (!/^[a-zA-Z0-9_-]+$/.test(value)) return "Usuário deve conter apenas letras, números, _ e -";
+        return null;
+      
+      case "senha":
+        if (!value.trim()) return "Senha é obrigatória";
+        if (value.length < 6) return "Senha deve ter no mínimo 6 caracteres";
+        return null;
+      
+      default:
+        return null;
+    }
+  };
+
+  // Validações assíncronas - verificar duplicações
+  // ⚠️ COMENTADAS: Aguardando implementação dos endpoints no backend
+  /*
+  const verificarEmailDuplicado = async (email: string) => {
+    if (!email.includes("@") || !email.includes(".")) return;
+    
+    setValidando(prev => ({ ...prev, emailValidando: true }));
+    try {
+      const response = await authApi.get("/funcionario/verificar-email", {
+        params: { email: email.toLowerCase() }
+      });
+      
+      if (response.data?.existe) {
+        setErrosCampo(prev => ({ 
+          ...prev, 
+          emailCadastro: "Este e-mail já está cadastrado no sistema" 
+        }));
+      } else {
+        setErrosCampo(prev => {
+          const novo = { ...prev };
+          delete novo.emailCadastro;
+          return novo;
+        });
+      }
+    } catch (error: any) {
+      // Se endpoint não existe (404), ignorar
+      // Se houver outro erro, logar mas não bloquear
+      if (error.response?.status !== 404) {
+        console.log("Erro ao verificar email:", error.message);
+      }
+    } finally {
+      setValidando(prev => ({ ...prev, emailValidando: false }));
+    }
+  };
+
+  const verificarUsuarioDuplicado = async (usuario: string) => {
+    if (usuario.length < 3) return;
+    
+    setValidando(prev => ({ ...prev, usuarioValidando: true }));
+    try {
+      const response = await authApi.get("/funcionario/verificar-usuario", {
+        params: { usuario: usuario.trim() }
+      });
+      
+      if (response.data?.existe) {
+        setErrosCampo(prev => ({ 
+          ...prev, 
+          nomeUsuario: "Este nome de usuário já existe no sistema" 
+        }));
+      } else {
+        setErrosCampo(prev => {
+          const novo = { ...prev };
+          delete novo.nomeUsuario;
+          return novo;
+        });
+      }
+    } catch (error: any) {
+      if (error.response?.status !== 404) {
+        console.log("Erro ao verificar usuário:", error.message);
+      }
+    } finally {
+      setValidando(prev => ({ ...prev, usuarioValidando: false }));
+    }
+  };
+
+  const verificarCPFDuplicado = async (cpf: string) => {
+    const cpfLimpo = removerFormatacao(cpf);
+    if (cpfLimpo.length !== 11) return;
+    
+    setValidando(prev => ({ ...prev, cpfValidando: true }));
+    try {
+      const response = await authApi.get("/funcionario/verificar-cpf", {
+        params: { cpf: cpfLimpo }
+      });
+      
+      if (response.data?.existe) {
+        setErrosCampo(prev => ({ 
+          ...prev, 
+          cpf: "Este CPF já está cadastrado no sistema" 
+        }));
+      } else {
+        setErrosCampo(prev => {
+          const novo = { ...prev };
+          delete novo.cpf;
+          return novo;
+        });
+      }
+    } catch (error: any) {
+      if (error.response?.status !== 404) {
+        console.log("Erro ao verificar CPF:", error.message);
+      }
+    } finally {
+      setValidando(prev => ({ ...prev, cpfValidando: false }));
+    }
+  };
+  */
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -46,40 +195,103 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
     }
 
     setFormData({ ...formData, [name]: novoValor });
+
+    // Validar campo em tempo real (validações síncronas)
+    const erro = validarCampo(name, novoValor);
+    setErrosCampo(prev => ({
+      ...prev,
+      [name]: erro
+    }));
+
+    // ⚠️ Validações assíncronas COMENTADAS: Aguardando endpoints no backend
+    /*
+    // Validações assíncronas com debounce
+    if (name === "emailCadastro" && !erro) {
+      // Limpar debounce anterior
+      if (debounceTimers.current[name]) {
+        clearTimeout(debounceTimers.current[name]);
+      }
+      // Novo debounce
+      debounceTimers.current[name] = setTimeout(() => {
+        verificarEmailDuplicado(novoValor);
+      }, 800);
+    }
+
+    if (name === "nomeUsuario" && !erro) {
+      if (debounceTimers.current[name]) {
+        clearTimeout(debounceTimers.current[name]);
+      }
+      debounceTimers.current[name] = setTimeout(() => {
+        verificarUsuarioDuplicado(novoValor);
+      }, 800);
+    }
+
+    if (name === "cpf" && !erro) {
+      if (debounceTimers.current[name]) {
+        clearTimeout(debounceTimers.current[name]);
+      }
+      debounceTimers.current[name] = setTimeout(() => {
+        verificarCPFDuplicado(novoValor);
+      }, 800);
+    }
+    */
   };
 
-  const validateForm = (): string | null => {
-    if (!formData.nomeCompleto.trim()) return "Nome completo é obrigatório";
-    if (!formData.cpf.trim()) return "CPF é obrigatório";
-    if (!formData.qualificacaoFuncionario.trim()) return "Qualificação/Cargo é obrigatório";
-    if (!formData.emailCadastro.trim()) return "E-mail é obrigatório";
-    if (!formData.emailCadastro.includes("@")) return "E-mail inválido";
-    if (!formData.nomeUsuario.trim()) return "Nome de usuário é obrigatório";
-    if (!formData.senha.trim() || formData.senha.length < 6) return "Senha é obrigatória e deve ter no mínimo 6 caracteres";
-    return null;
+  const validateForm = (): ErrosCampo => {
+    const erros: ErrosCampo = {};
+    
+    Object.keys(formData).forEach((key) => {
+      if (key !== "id" && key !== "senha") {
+        const erro = validarCampo(key, formData[key as keyof Funcionario] as string);
+        if (erro) erros[key as keyof ErrosCampo] = erro;
+      }
+    });
+
+    // Validação específica para senha
+    const erroSenha = validarCampo("senha", formData.senha);
+    if (erroSenha) erros.senha = erroSenha;
+
+    return erros;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validationError = validateForm();
-    if (validationError) {
-      setAlert({ isOpen: true, titulo: "Erro na Validação", mensagem: validationError, tipo: "erro" });
+    const validacaoErros = validateForm();
+    if (Object.keys(validacaoErros).length > 0) {
+      setErrosCampo(validacaoErros);
+      setAlert({
+        isOpen: true,
+        titulo: "Erros na Validação",
+        mensagem: "Por favor, corrija os campos destacados em vermelho.",
+        tipo: "erro",
+      });
       return;
     }
+
+    // ⚠️ COMENTADO: Aguardando implementação dos endpoints no backend
+    /*
+    // Verificar se há alguma validação assíncrona em andamento
+    if (Object.values(validando).some(v => v)) {
+      setAlert({
+        isOpen: true,
+        titulo: "Aguarde",
+        mensagem: "Ainda estamos verificando os dados. Aguarde um momento...",
+        tipo: "aviso",
+      });
+      return;
+    }
+    */
     
     setLoading(true);
     try {
       const { id, ...novoFuncionarioData } = formData;
       
       const novoFuncionario = {
-        // Se a API recusar UUID vazio (""), remova a linha abaixo. 
-        // Mas se a antiga mandava assim, vamos manter:
         id: id || "", 
         nomeCompleto: formatarTexto(novoFuncionarioData.nomeCompleto),
         nomeUsuario: novoFuncionarioData.nomeUsuario.trim(),
         emailCadastro: formatarEmail(novoFuncionarioData.emailCadastro),
-        // ATENÇÃO: Se a sua API precisar do CPF COM máscara (pontos e traço), tire o 'removerFormatacao' aqui
         cpf: removerFormatacao(novoFuncionarioData.cpf), 
         senha: novoFuncionarioData.senha,
         qualificacaoFuncionario: formatarTexto(novoFuncionarioData.qualificacaoFuncionario),
@@ -96,13 +308,57 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
 
       // Limpar o formulário
       setFormData({ id: "", nomeCompleto: "", nomeUsuario: "", emailCadastro: "", cpf: "", senha: "", qualificacaoFuncionario: "" });
+      setErrosCampo({});
       
     } catch (error: any) {
       console.error("Erro ao cadastrar funcionário:", error);
+      
+      const errosApi: ErrosCampo = {};
+      let mensagem = error.response?.data?.message || error.message || "Erro desconhecido ao cadastrar funcionário";
+
+      // Se a API retornar validações de campo estruturadas
+      if (error.response?.data?.erros && typeof error.response.data.erros === 'object') {
+        Object.entries(error.response.data.erros).forEach(([campo, msg]: [string, any]) => {
+          errosApi[campo as keyof ErrosCampo] = msg;
+        });
+      }
+
+      // Se houver mensagem de erro 400, tentar mapear para campos
+      if (error.response?.status === 400 || error.response?.status === 409) {
+        const msgLower = mensagem.toLowerCase();
+
+        // Detectar duplicações
+        if (msgLower.includes('email') && msgLower.includes('existe')) {
+          errosApi.emailCadastro = "Este e-mail já está cadastrado no sistema";
+        }
+        if (msgLower.includes('usuario') && (msgLower.includes('existe') || msgLower.includes('duplicate'))) {
+          errosApi.nomeUsuario = "Este nome de usuário já existe no sistema";
+        }
+        if (msgLower.includes('usuário') && (msgLower.includes('existe') || msgLower.includes('duplicate'))) {
+          errosApi.nomeUsuario = "Este nome de usuário já existe no sistema";
+        }
+        if (msgLower.includes('cpf') && msgLower.includes('existe')) {
+          errosApi.cpf = "Este CPF já está cadastrado no sistema";
+        }
+        if (msgLower.includes('nome') && msgLower.includes('existe')) {
+          errosApi.nomeCompleto = "Este nome de funcionário já existe no sistema";
+        }
+
+        // Se não encontrou erro específico, mostrar genérico
+        if (Object.keys(errosApi).length === 0) {
+          mensagem = error.response?.data?.message || "Erro ao cadastrar. Verifique os dados e tente novamente.";
+        }
+      }
+
+      if (Object.keys(errosApi).length > 0) {
+        setErrosCampo(errosApi);
+        mensagem = "Verifique os campos destacados em vermelho";
+      }
+
       setAlert({
         isOpen: true,
         titulo: "Erro ao Cadastrar",
-        mensagem: error.response?.data?.message || error.message || "Erro desconhecido ao cadastrar funcionário",
+        mensagem: mensagem,
         tipo: "erro",
       });
     } finally {
@@ -118,83 +374,135 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
         </div>
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 p-4 sm:p-6">
           <p className="text-blue font-semibold text-xs sm:text-sm uppercase mb-4 sm:mb-6 mt-4">Informações Pessoais</p>
+          
+          {/* Nome Completo */}
           <div>
-            <label className="block text-primary font-medium text-sm">Nome Completo</label>
+            <label className="block text-primary font-medium text-sm mb-1">Nome Completo</label>
             <input
               type="text"
               name="nomeCompleto"
               value={formData.nomeCompleto}
               onChange={handleChange}
-              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className={`w-full px-3 sm:px-4 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm transition ${
+                errosCampo.nomeCompleto
+                  ? "border-red-500 focus:ring-red-500 bg-red-50"
+                  : "border-gray-300 focus:ring-blue-500"
+              }`}
               placeholder="Digite o nome do funcionário"
               required
             />
+            {errosCampo.nomeCompleto && (
+              <p className="text-red-500 text-xs mt-1">⚠️ {errosCampo.nomeCompleto}</p>
+            )}
           </div>
+
+          {/* CPF e Qualificação */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="w-full">
-              <label className="block text-primary font-medium text-sm">CPF</label>
+              <label className="block text-primary font-medium text-sm mb-1">CPF</label>
               <input
                 type="text"
                 name="cpf"
                 value={formData.cpf}
                 onChange={handleChange}
-                className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className={`w-full px-3 sm:px-4 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm transition ${
+                  errosCampo.cpf
+                    ? "border-red-500 focus:ring-red-500 bg-red-50"
+                    : "border-gray-300 focus:ring-blue-500"
+                }`}
                 placeholder="000.000.000-00"
                 required
               />
+              {errosCampo.cpf && (
+                <p className="text-red-500 text-xs mt-1">⚠️ {errosCampo.cpf}</p>
+              )}
             </div>
             <div className="w-full">
-              <label className="block text-primary font-medium text-sm">Qualificação / Cargo</label>
+              <label className="block text-primary font-medium text-sm mb-1">Qualificação / Cargo</label>
               <input
                 type="text"
                 name="qualificacaoFuncionario"
                 value={formData.qualificacaoFuncionario}
                 onChange={handleChange}
-                className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className={`w-full px-3 sm:px-4 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm transition ${
+                  errosCampo.qualificacaoFuncionario
+                    ? "border-red-500 focus:ring-red-500 bg-red-50"
+                    : "border-gray-300 focus:ring-blue-500"
+                }`}
                 placeholder="Ex: Sócio / Advogado"
                 required
               />
+              {errosCampo.qualificacaoFuncionario && (
+                <p className="text-red-500 text-xs mt-1">⚠️ {errosCampo.qualificacaoFuncionario}</p>
+              )}
             </div>
           </div>
+
           <p className="text-blue font-semibold text-xs sm:text-sm uppercase mb-4 sm:mb-6 mt-6 sm:mt-8">Acesso ao Sistema</p>
+          
+          {/* Email */}
           <div>
-            <label className="block text-primary font-medium text-sm">E-mail</label>
+            <label className="block text-primary font-medium text-sm mb-1">E-mail</label>
             <input
               type="email"
               name="emailCadastro"
               value={formData.emailCadastro}
               onChange={handleChange}
-              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className={`w-full px-3 sm:px-4 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm transition ${
+                errosCampo.emailCadastro
+                  ? "border-red-500 focus:ring-red-500 bg-red-50"
+                  : "border-gray-300 focus:ring-blue-500"
+              }`}
               placeholder="email@email.com"
               required
             />
+            {errosCampo.emailCadastro && (
+              <p className="text-red-500 text-xs mt-1">⚠️ {errosCampo.emailCadastro}</p>
+            )}
           </div>
+
+          {/* Nome Usuário e Senha */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="w-full">
-              <label className="block text-primary font-medium text-sm">Nome Usuário</label>
+              <label className="block text-primary font-medium text-sm mb-1">Nome Usuário</label>
               <input
                 type="text"
                 name="nomeUsuario"
                 value={formData.nomeUsuario}
                 onChange={handleChange}
-                className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className={`w-full px-3 sm:px-4 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm transition ${
+                  errosCampo.nomeUsuario
+                    ? "border-red-500 focus:ring-red-500 bg-red-50"
+                    : "border-gray-300 focus:ring-blue-500"
+                }`}
                 placeholder="Usuário para login"
                 required
               />
+              {errosCampo.nomeUsuario && (
+                <p className="text-red-500 text-xs mt-1">⚠️ {errosCampo.nomeUsuario}</p>
+              )}
             </div>
             <div className="w-full">
-              <label className="block text-primary font-medium text-sm">Senha</label>
+              <label className="block text-primary font-medium text-sm mb-1">Senha</label>
               <input
                 type="password"
                 name="senha"
                 value={formData.senha}
                 onChange={handleChange}
-                className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className={`w-full px-3 sm:px-4 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm transition ${
+                  errosCampo.senha
+                    ? "border-red-500 focus:ring-red-500 bg-red-50"
+                    : "border-gray-300 focus:ring-blue-500"
+                }`}
                 placeholder="Digite uma senha segura"
                 required
               />
+              {errosCampo.senha && (
+                <p className="text-red-500 text-xs mt-1">⚠️ {errosCampo.senha}</p>
+              )}
             </div>
           </div>
+
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4 mt-8 sm:mt-10">
             <button 
               type="button" 
