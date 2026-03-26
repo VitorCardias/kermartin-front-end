@@ -8,7 +8,15 @@ import { useFuncionarios } from "../Hooks/useFuncionarios";
 const Funcionarios: React.FC = () => {
 
     const [modalOpen, setModalOpen] = useState(false);
-    const { funcionarios, cadastrarFuncionario } = useFuncionarios();
+    const [termoPesquisa, setTermoPesquisa] = useState("");
+    const { funcionarios, loading, cadastrarFuncionario } = useFuncionarios();
+
+    // Filtrar funcionários baseado no termo de pesquisa
+    const funcionariosFiltrados = funcionarios.filter((funcionario) =>
+        funcionario.nomeCompleto.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+        funcionario.emailCadastro.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+        funcionario.qualificacaoFuncionario.toLowerCase().includes(termoPesquisa.toLowerCase())
+    );
 
     return (
         <>
@@ -26,9 +34,36 @@ const Funcionarios: React.FC = () => {
                     </button>
                 </div>
                 <div className="w-full sm:w-4/5 bg-white rounded-lg shadow-md p-4 sm:p-6 flex flex-col">
-                    <Pesquisar label="Pesquisar Funcionário:" placeholder="Digite o nome do funcionário..." />
+                    <Pesquisar 
+                        label="Pesquisar Funcionário:" 
+                        placeholder="Digite o nome, email ou qualificação..." 
+                        onSearch={setTermoPesquisa}
+                    />
                 </div>
-                <CardFuncionario />
+
+                {/* Lista de Funcionários */}
+                <div className="w-full flex flex-col gap-3 sm:gap-4 items-center justify-center">
+                    {loading ? (
+                        <div className="w-full sm:w-4/5 text-center py-8 bg-white rounded-lg shadow-md">
+                            <p className="text-muted text-sm sm:text-base">Carregando funcionários...</p>
+                        </div>
+                    ) : funcionariosFiltrados.length === 0 ? (
+                        <div className="w-full sm:w-4/5 text-center py-8 bg-white rounded-lg shadow-md">
+                            <p className="text-muted text-sm sm:text-base">
+                                {termoPesquisa ? "Nenhum funcionário encontrado" : "Nenhum funcionário cadastrado"}
+                            </p>
+                        </div>
+                    ) : (
+                        funcionariosFiltrados.map((funcionario) => (
+                            <CardFuncionario
+                                key={funcionario.id}
+                                nome={funcionario.nomeCompleto}
+                                email={funcionario.emailCadastro}
+                                cargo={funcionario.qualificacaoFuncionario}
+                            />
+                        ))
+                    )}
+                </div>
             </div>
             <CadastroFuncionario
                 isOpen={modalOpen}

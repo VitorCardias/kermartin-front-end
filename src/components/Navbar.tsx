@@ -14,7 +14,8 @@ const Navbar: React.FC = () => {
 
     // Links baseado no role e tipo do usuário
     const isSuperAdmin = usuario?.roles?.includes("ROLE_SUPER_ADMIN");
-    const isFuncionario = perfil?.tipoUsuario === "Funcionario";
+    // Se perfil ainda não carregou, assume Escritorio como padrão
+    const isFuncionario = perfil?.tipoUsuario === "Funcionario" || false;
 
     const links = isSuperAdmin
         ? [
@@ -41,11 +42,15 @@ const Navbar: React.FC = () => {
             <nav className="bg-white border-b-3 border-default text-muted p-3 sm:p-4 flex items-center justify-between sticky top-0 z-40">
                 {/* Esquerda: Razão Social do Escritório */}
                 <div className="flex-1 min-w-0">
-                    {!isSuperAdmin && perfil?.nomeEscritorio && (
+                    {!isSuperAdmin && perfil?.nomeEscritorio ? (
                         <span className="text-sm sm:text-xl  font-semibold text-gray-800 truncate">
                             {perfil.nomeEscritorio}
                         </span>
-                    )}
+                    ) : !isSuperAdmin ? (
+                        <span className="text-sm sm:text-xl font-semibold text-gray-400 truncate">
+                            Carregando...
+                        </span>
+                    ) : null}
                 </div>
 
                 {/* Centro: Links de Navegação (Desktop) */}

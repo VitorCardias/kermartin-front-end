@@ -84,7 +84,7 @@ export const useFuncionarios = () => {
 
       await authApi.post("/funcionario/cadastro", {
         ...novoFuncionario,
-        escritorioDTO: { id: perfil.idEscritorio },
+        escritorio: perfil.idEscritorio ,
       
       });
 
@@ -95,40 +95,21 @@ export const useFuncionarios = () => {
     }
   };
 
-  // Função para atualizar um funcionário existente
   const editarFuncionario = async (funcionarioEditado: Funcionario) => {
     try {
-      if (!perfil?.id) {
-        console.error("Erro: Perfil do usuário não encontrado.");
-        return;
-      }
-
-      await authApi.put("/funcionario/editar", {
-        ...funcionarioEditado
-      });
-
-      await buscarFuncionarios(); // Recarrega a lista após a edição
+      if (!perfil?.id) return;
+      await authApi.put("/funcionario/editar", { ...funcionarioEditado });
+      await buscarFuncionarios(); 
     } catch (erro) {
       console.error("Erro ao editar funcionario: ", erro);
     }
   };
 
-  // Função para alterar a senha de um funcionario
-  const alterarSenhaFuncionario = async (alterarSenhaFuncionarioRequest: AlterarSenhaFuncionarioForm) => {
-
+const alterarSenhaFuncionario = async (alterarSenhaFuncionarioRequest: AlterarSenhaFuncionarioForm) => {
     try {
-      if (!perfil?.id) {
-        console.error("Erro: Perfil do usuário não encontrado.");
-        return;
-      }
-
-      await authApi.put("/funcionario/alterar-senha-funcionario", {
-        ...alterarSenhaFuncionarioRequest
-      });
-
-      console.log("Log: Alteração de senha realizada com sucesso!")
-      await buscarFuncionarios(); // Recarrega a lista após a edição
-
+      if (!perfil?.id) return;
+      await authApi.put("/funcionario/alterar-senha-funcionario", { ...alterarSenhaFuncionarioRequest });
+      await buscarFuncionarios();
     } catch (erro) {
       console.error("Erro ao editar funcionario: ", erro);
     }

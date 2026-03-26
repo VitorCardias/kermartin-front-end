@@ -41,7 +41,6 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
     const { name, value } = e.target;
     let novoValor = value;
 
-    // Aplicar formatação específica para cada campo
     if (name === "cpf") {
       novoValor = formatarCPFEnquantoDigita(value);
     }
@@ -50,27 +49,13 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
   };
 
   const validateForm = (): string | null => {
-    if (!formData.nomeCompleto.trim()) {
-      return "Nome completo é obrigatório";
-    }
-    if (!formData.cpf.trim()) {
-      return "CPF é obrigatório";
-    }
-    if (!formData.qualificacaoFuncionario.trim()) {
-      return "Qualificação/Cargo é obrigatório";
-    }
-    if (!formData.emailCadastro.trim()) {
-      return "E-mail é obrigatório";
-    }
-    if (!formData.emailCadastro.includes("@")) {
-      return "E-mail inválido";
-    }
-    if (!formData.nomeUsuario.trim()) {
-      return "Nome de usuário é obrigatório";
-    }
-    if (!formData.senha.trim() || formData.senha.length < 6) {
-      return "Senha é obrigatória e deve ter no mínimo 6 caracteres";
-    }
+    if (!formData.nomeCompleto.trim()) return "Nome completo é obrigatório";
+    if (!formData.cpf.trim()) return "CPF é obrigatório";
+    if (!formData.qualificacaoFuncionario.trim()) return "Qualificação/Cargo é obrigatório";
+    if (!formData.emailCadastro.trim()) return "E-mail é obrigatório";
+    if (!formData.emailCadastro.includes("@")) return "E-mail inválido";
+    if (!formData.nomeUsuario.trim()) return "Nome de usuário é obrigatório";
+    if (!formData.senha.trim() || formData.senha.length < 6) return "Senha é obrigatória e deve ter no mínimo 6 caracteres";
     return null;
   };
 
@@ -79,12 +64,7 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
 
     const validationError = validateForm();
     if (validationError) {
-      setAlert({
-        isOpen: true,
-        titulo: "Erro na Validação",
-        mensagem: validationError,
-        tipo: "erro",
-      });
+      setAlert({ isOpen: true, titulo: "Erro na Validação", mensagem: validationError, tipo: "erro" });
       return;
     }
     
@@ -92,15 +72,18 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
     try {
       const { id, ...novoFuncionarioData } = formData;
       
-      const novoFuncionario: Funcionario = {
-        id: id || "",
+      const novoFuncionario = {
+        // Se a API recusar UUID vazio (""), remova a linha abaixo. 
+        // Mas se a antiga mandava assim, vamos manter:
+        id: id || "", 
         nomeCompleto: formatarTexto(novoFuncionarioData.nomeCompleto),
         nomeUsuario: novoFuncionarioData.nomeUsuario.trim(),
         emailCadastro: formatarEmail(novoFuncionarioData.emailCadastro),
-        cpf: removerFormatacao(novoFuncionarioData.cpf),
+        // ATENÇÃO: Se a sua API precisar do CPF COM máscara (pontos e traço), tire o 'removerFormatacao' aqui
+        cpf: removerFormatacao(novoFuncionarioData.cpf), 
         senha: novoFuncionarioData.senha,
         qualificacaoFuncionario: formatarTexto(novoFuncionarioData.qualificacaoFuncionario),
-      };
+      } as Funcionario;
 
       await onCadastro(novoFuncionario);
       
@@ -112,21 +95,14 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
       });
 
       // Limpar o formulário
-      setFormData({
-        id: "",
-        nomeCompleto: "",
-        nomeUsuario: "",
-        emailCadastro: "",
-        cpf: "",
-        senha: "",
-        qualificacaoFuncionario: "",
-      });
-    } catch (error) {
+      setFormData({ id: "", nomeCompleto: "", nomeUsuario: "", emailCadastro: "", cpf: "", senha: "", qualificacaoFuncionario: "" });
+      
+    } catch (error: any) {
       console.error("Erro ao cadastrar funcionário:", error);
       setAlert({
         isOpen: true,
         titulo: "Erro ao Cadastrar",
-        mensagem: error instanceof Error ? error.message : "Erro desconhecido ao cadastrar funcionário",
+        mensagem: error.response?.data?.message || error.message || "Erro desconhecido ao cadastrar funcionário",
         tipo: "erro",
       });
     } finally {
@@ -243,15 +219,11 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
           mostrarBotaoCancelar={false}
           onCancel={() => {
             setAlert({ ...alert, isOpen: false });
-            if (alert.tipo === "sucesso") {
-              onClose();
-            }
+            if (alert.tipo === "sucesso") onClose();
           }}
           onConfirm={() => {
             setAlert({ ...alert, isOpen: false });
-            if (alert.tipo === "sucesso") {
-              onClose();
-            }
+            if (alert.tipo === "sucesso") onClose();
           }}
         />
       </div>

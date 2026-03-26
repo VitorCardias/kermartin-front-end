@@ -87,8 +87,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const usuario = getUsuarioFromToken(token);
           setUsuario(usuario);
           setEstaAutenticado(true);
-          // Buscar perfil em background (não bloqueia a verificação)
-          buscarPerfil(usuario.username);
+          // Buscar perfil em background com delay (não bloqueia)
+          setTimeout(() => buscarPerfil(usuario.username), 500);
           setCarregando(false);
         } catch (error) {
           try {
@@ -98,7 +98,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const usuario = getUsuarioFromToken(tokens.token);
             setUsuario(usuario);
             setEstaAutenticado(true);
-            buscarPerfil(usuario.username);
+            setTimeout(() => buscarPerfil(usuario.username), 500);
             setCarregando(false);
           } catch (refreshError) {
             authService.logout();
@@ -135,10 +135,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUsuario(user);
       setEstaAutenticado(true);
 
-      // Buscar perfil em background
-      buscarPerfil(user.username);
+      // Buscar perfil em background com delay (não bloqueia o login)
+      setTimeout(() => buscarPerfil(user.username), 1000);
 
-      // Retornar o usuario
+      // Retornar o usuario imediatamente
       return user;
 
     } catch (error: any) {
