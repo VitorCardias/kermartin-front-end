@@ -4,6 +4,7 @@ import Status from './Status';
 import Prioridade from './Prioridade';
 import ModalAlerta from './modals/AlertModal';
 import { useTarefa } from '../Hooks/useTarefa';
+
 interface CardDemandaProps {
     titulo?: string;
     cliente?: string;
@@ -32,11 +33,6 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
 
     const [modalOpen, setModalOpen] = useState(false);
     let statusAtual = obterStatus();
-    
-    // Se responsáveis estiver vazio, o status fica aguardando
-    if (!responsaveis || responsaveis.length === 0) {
-        statusAtual = 'aguardando';
-    }
 
     const handleConfirmarDelete = () => {
         setModalOpen(false);
@@ -46,22 +42,20 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
     };
 
     let corBordaCard;
-        switch (statusAtual) {
-            case 'aguardando':
-                corBordaCard = 'border-l-aguardando';
-                break;
-            case 'andamento':
-                corBordaCard = 'border-l-andamento';
-                break;
-            case 'finalizado':
-                corBordaCard = 'border-l-finalizado';
-                break;
-            case 'atrasada':
-                corBordaCard = 'border-l-atrasada';
-                break;
-            default:
-                corBordaCard = 'border-l-aguardando';
-        }
+    let statusParaComponente: 'aguardando' | 'andamento' | 'finalizado' | 'atrasada' = 'aguardando';
+    switch (statusAtual) {
+        case 'aguardando': corBordaCard = 'border-l-aguardando'; statusParaComponente = 'aguardando'; break;
+        case 'andamento': corBordaCard = 'border-l-andamento'; statusParaComponente = 'andamento'; break;
+        case 'finalizado': corBordaCard = 'border-l-finalizado'; statusParaComponente = 'finalizado'; break;
+        case 'atrasada': corBordaCard = 'border-l-atrasada'; statusParaComponente = 'atrasada'; break;
+        default: corBordaCard = 'border-l-aguardando';
+    }
+
+    // LÓGICA DE EXTRAÇÃO DE RESPONSÁVEIS:
+    // Se a prop responsaveis vier vazia, mas tivermos o objeto demanda, extraímos de lá.
+    const equipeExibicao = responsaveis.length > 0 
+        ? responsaveis 
+        : (demanda?.responsavelList?.map((r: any) => r.nome || r.funcionarioDTO?.nomeCompleto) || []);
 
     return (
         <>
@@ -73,7 +67,7 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
                     <div className='flex flex-row gap-2 sm:gap-3 md:gap-4 flex-1 min-w-0'>
                         <div className='flex-1 min-w-0'>
                             <div className='flex flex-row gap-2 mb-2 items-center flex-wrap'>
-                                <Status status={statusAtual} />
+                                <Status status={statusParaComponente} />
                                 <Prioridade prioridade={prioridade} />
                             </div>
                             <Titulo tamanho="text-sm sm:text-base md:text-lg">{titulo} - {cliente}</Titulo>
@@ -81,7 +75,10 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
                                 <p style={corVencimento ? { color: corVencimento } : {}} className='truncate'>
                                     Vence em: {formatarDataExibicao(dataVencimento)} ({textoVencimento})
                                 </p>
-                                <p className='truncate'>Responsável: {responsaveis.length > 0 ? responsaveis.join(', ') : 'Sem Atribuições'}</p>
+                                {/* Utilizando a variável mapeada com redundância */}
+                                <p className='truncate'>
+                                    Responsável: {equipeExibicao.length > 0 ? equipeExibicao.join(', ') : 'Sem Atribuições'}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -94,7 +91,6 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
                             >
                                 Editar
                             </button>
-                            
                         </div>
                     </div>
                 </div>

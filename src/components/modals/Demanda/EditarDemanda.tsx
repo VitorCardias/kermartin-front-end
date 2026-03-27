@@ -4,6 +4,8 @@ import AlertModal from '../AlertModal';
 import { useDemandas } from '../../../Hooks/useDemandas';
 import { useClientes } from '../../../Hooks/useClientes';
 import { useFuncionarios } from '../../../Hooks/useFuncionarios';
+import { useEquipe } from '../../../Hooks/useEquipe';
+import { authApi } from '../../../api/AuthService';
 import { converterParaFormatoDateTimeLocal, PrioridadeDemanda } from '../../../types/TiposDemandas';
 
 type EditarDemandaProps = {
@@ -13,60 +15,56 @@ type EditarDemandaProps = {
   onSuccess?: () => void;
 };
 
+// Tipo para controlar a fila de edição da equipe
+type MembroFila = {
+  funcionarioId: string;
+  nome: string;
+  vinculoId?: string; // ID do banco de dados (se já existia)
+  status: 'ativo' | 'novo' | 'remover'; // Controle do que fazer no submit
+};
+
 const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda, onSuccess }) => {
   const { editarDemanda, deletarDemanda } = useDemandas();
   const { clientes } = useClientes();
   const { funcionarios } = useFuncionarios();
+  
+  // Busca a equipe original direto da rota de relacionamento
+  const { membrosEquipe } = useEquipe(demanda?.id || "");
 
   const [formData, setFormData] = useState({
     id: '',
     titulo: '',
     descricao: '',
     clienteDto: undefined as any,
-    prioridadeDemanda: 'Media' as const,
-    statusDemanda: 'RequerindoEquipe' as const,
+    prioridadeDemanda: 'Media' as string,
+    statusDemanda: 'RequerindoEquipe' as string,
     inicioPrazo: '',
     conclusaoPrazo: '',
     porcentagemConclusao: 0,
-    responsavelList: [] as any[],
   });
 
-  const [alert, setAlert] = useState({
-    isOpen: false,
-    titulo: '',
-    mensagem: '',
-    tipo: 'aviso' as 'aviso' | 'erro' | 'sucesso',
-  });
+  // Estado para controlar a equipe na interface
+  const [membrosForm, setMembrosForm] = useState<MembroFila[]>([]);
 
+  const [alert, setAlert] = useState({ isOpen: false, titulo: '', mensagem: '', tipo: 'aviso' as 'aviso' | 'erro' | 'sucesso' });
   const [loading, setLoading] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
-  // Função para obter cores dinâmicas baseadas no status
-  const getStatusColors = (status: string) => {
-    switch (status) {
-      case 'RequerindoEquipe':
-        return { bg: 'bg-status-wait', text: 'text-status-wait' };
-      case 'EmAndamento':
-        return { bg: 'bg-status-inprogress', text: 'text-status-inprogress' };
-      case 'Finalizada':
-        return { bg: 'bg-status-completed', text: 'text-status-completed' };
-      case 'Atrasada':
-        return { bg: 'bg-status-delayed', text: 'text-status-delayed' };
-      case 'Cancelada':
-        return { bg: 'bg-gray-400', text: 'text-gray-700' };
-      default:
-        return { bg: 'bg-status-wait', text: 'text-status-wait' };
-    }
+  // Função utilitária para data no formato do backend
+  const obterDataAtualFormato = () => {
+    const agora = new Date();
+    const dia = String(agora.getDate()).padStart(2, "0");
+    const mes = String(agora.getMonth() + 1).padStart(2, "0");
+    const ano = agora.getFullYear();
+    const horas = String(agora.getHours()).padStart(2, "0");
+    const minutos = String(agora.getMinutes()).padStart(2, "0");
+    const segundos = String(agora.getSeconds()).padStart(2, "0");
+    return `${dia}-${mes}-${ano} ${horas}:${minutos}:${segundos}`;
   };
 
-  const { bg: statusBgColor, text: statusTextColor } = getStatusColors(formData.statusDemanda);
-
-  // Carregar dados da demanda quando modal abre
+  // Carregar dados iniciais da demanda
   useEffect(() => {
     if (isOpen && demanda) {
-
-      setAlert({ isOpen: false, titulo: '', mensagem: '', tipo: 'aviso' });
-
       setFormData({
         id: demanda.id,
         titulo: demanda.titulo || '',
@@ -77,294 +75,234 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
         inicioPrazo: converterParaFormatoDateTimeLocal(demanda.inicioPrazo),
         conclusaoPrazo: converterParaFormatoDateTimeLocal(demanda.conclusaoPrazo),
         porcentagemConclusao: demanda.porcentagemConclusao || 0,
-        responsavelList: demanda.responsavelList || [],
       });
     }
   }, [isOpen, demanda]);
 
+  // Sincronizar os membros vindos do banco de dados
+  useEffect(() => {
+    if (membrosEquipe && membrosEquipe.length > 0) {
+      const equipeFormatada: MembroFila[] = membrosEquipe.map(m => ({
+        vinculoId: m.id, 
+        funcionarioId: m.funcionarioDTO.id, 
+        nome: m.funcionarioDTO.nomeCompleto, // Removido o nomeUsuario
+        status: 'ativo'
+      }));
+      setMembrosForm(equipeFormatada);
+    } else {
+      setMembrosForm([]);
+    }
+  }, [membrosEquipe]);
+
+  // Efeito para automatizar a mudança de status baseada na equipe
+  useEffect(() => {
+    // Verificamos quantos membros estão visíveis (ignorando os marcados para remover)
+    const membrosAtivos = membrosForm.filter(m => m.status !== 'remover').length;
+
+    if (membrosAtivos > 0 && formData.statusDemanda === 'RequerindoEquipe') {
+      // Se tem gente na equipe e estava aguardando, muda para Em Andamento
+      setFormData(prev => ({ ...prev, statusDemanda: 'EmAndamento' }));
+    } else if (membrosAtivos === 0 && formData.statusDemanda === 'EmAndamento') {
+      // Se não tem ninguém e estava Em Andamento, volta para Aguardando Equipe
+      // Nota: Não mexemos se estiver 'Finalizada' ou 'Cancelada' para não bugar o fluxo.
+      setFormData(prev => ({ ...prev, statusDemanda: 'RequerindoEquipe' }));
+    }
+  }, [membrosForm]); // <- O React vai rodar isso toda vez que a lista de membros mudar
+
   if (!isOpen) return null;
+
+  const getStatusColors = (status: string) => {
+    switch (status) {
+      case 'RequerindoEquipe': return { bg: 'bg-status-wait', text: 'text-status-wait' };
+      case 'EmAndamento': return { bg: 'bg-status-inprogress', text: 'text-status-inprogress' };
+      case 'Finalizada': return { bg: 'bg-status-completed', text: 'text-status-completed' };
+      case 'Atrasada': return { bg: 'bg-status-delayed', text: 'text-status-delayed' };
+      case 'Cancelada': return { bg: 'bg-gray-400', text: 'text-gray-700' };
+      default: return { bg: 'bg-status-wait', text: 'text-status-wait' };
+    }
+  };
+  const { bg: statusBgColor, text: statusTextColor } = getStatusColors(formData.statusDemanda);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
-    if (name === 'porcentagemConclusao') {
-      setFormData({
-        ...formData,
-        [name]: Math.min(100, Math.max(0, Number(value)))
-      });
-    } else if (name === 'clienteId') {
+    if (name === 'clienteId') {
       const clienteSelecionado = clientes?.find(c => c.id === value);
-      if (clienteSelecionado) {
-        setFormData({
-          ...formData,
-          clienteDto: clienteSelecionado
-        });
-      }
+      if (clienteSelecionado) setFormData({ ...formData, clienteDto: clienteSelecionado });
     } else if (name === 'responsavelId') {
-      const funcionarioSelecionado = funcionarios?.find(f => f.id === value);
-      if (funcionarioSelecionado && !formData.responsavelList.find((r: any) => r.id === funcionarioSelecionado.id)) {
-        setFormData({
-          ...formData,
-          responsavelList: [...formData.responsavelList, funcionarioSelecionado]
+      // ADICIONAR MEMBRO NA FILA
+      const func = funcionarios?.find(f => f.id === value);
+      if (func) {
+        setMembrosForm(prev => {
+          const existe = prev.find(m => m.funcionarioId === func.id);
+          if (existe) {
+            if (existe.status === 'remover') {
+              return prev.map(m => m.funcionarioId === func.id ? { ...m, status: m.vinculoId ? 'ativo' : 'novo' } : m);
+            }
+            return prev;
+          }
+          return [...prev, { funcionarioId: func.id, nome: func.nomeCompleto, status: 'novo' }]; // Removido o nomeUsuario
         });
       }
     } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
+      setFormData({ ...formData, [name]: value });
     }
   };
 
-  const removeResponsavel = (responsavelId: string) => {
-    setFormData({
-      ...formData,
-      responsavelList: formData.responsavelList.filter((r: any) => r.id !== responsavelId)
-    });
+  // REMOVER MEMBRO DA FILA
+  const removeResponsavel = (funcionarioId: string) => {
+    setMembrosForm(prev => prev.map(m => {
+      if (m.funcionarioId === funcionarioId) {
+        return { ...m, status: 'remover' };
+      }
+      return m;
+    }));
   };
 
   const validateForm = (): string | null => {
-    if (!formData.titulo.trim()) {
-      return 'Título da demanda é obrigatório';
-    }
-    if (formData.titulo.trim().length < 3) {
-      return 'Título deve ter no mínimo 3 caracteres';
-    }
-    if (!formData.clienteDto) {
-      return 'Cliente é obrigatório';
-    }
-    if (formData.inicioPrazo && formData.conclusaoPrazo) {
-      if (new Date(formData.inicioPrazo) > new Date(formData.conclusaoPrazo)) {
-        return 'Data de início não pode ser maior que data de conclusão';
-      }
-    }
+    if (!formData.titulo.trim()) return 'Título da demanda é obrigatório';
+    if (!formData.clienteDto) return 'Cliente é obrigatório';
     return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const validationError = validateForm();
     if (validationError) {
-      setAlert({
-        isOpen: true,
-        titulo: 'Erro na Validação',
-        mensagem: validationError,
-        tipo: 'erro',
-      });
+      setAlert({ isOpen: true, titulo: 'Erro', mensagem: validationError, tipo: 'erro' });
       return;
     }
 
     setLoading(true);
     try {
+      const resultadoDemanda = await editarDemanda({ ...formData, criador: demanda.criador });
 
-      const demandaPayload: any = {
-        id: formData.id,
-        criador: demanda.criador, // Será mantido do original
-        titulo: formData.titulo.trim(),
-        descricao: formData.descricao.trim() || null,
-        clienteDto: formData.clienteDto,
-        prioridadeDemanda: formData.prioridadeDemanda,
-        statusDemanda: formData.statusDemanda,
-        inicioPrazo: formData.inicioPrazo,
-        conclusaoPrazo: formData.conclusaoPrazo,
-        porcentagemConclusao: formData.porcentagemConclusao,
-        responsavelList: formData.responsavelList,
-      };
-
-      const resultado = await editarDemanda(demandaPayload);
-
-      if (resultado) {
-        setAlert({
-          isOpen: true,
-          titulo: 'Sucesso',
-          mensagem: 'Demanda atualizada com sucesso!',
-          tipo: 'sucesso',
+      if (resultadoDemanda) {
+        // Processa a fila de Equipe
+        const promessasEquipe = membrosForm.map(async (m) => {
+          if (m.status === 'novo') {
+            return authApi.post("/membro-equipe-demanda", {
+              demandaDTO: { id: formData.id },
+              funcionarioDTO: { id: m.funcionarioId },
+              inicioParticipacao: obterDataAtualFormato()
+            });
+          } else if (m.status === 'remover' && m.vinculoId) {
+            return authApi.delete(`/membro-equipe-demanda/${m.vinculoId}`);
+          }
+          return Promise.resolve();
         });
+
+        await Promise.all(promessasEquipe);
+
+        setAlert({ isOpen: true, titulo: 'Sucesso', mensagem: 'Demanda e equipe atualizadas!', tipo: 'sucesso' });
         setTimeout(() => {
           onSuccess?.();
           onClose();
         }, 1500);
       } else {
-        setAlert({
-          isOpen: true,
-          titulo: 'Erro',
-          mensagem: 'Erro ao atualizar demanda. Tente novamente.',
-          tipo: 'erro',
-        });
+        setAlert({ isOpen: true, titulo: 'Erro', mensagem: 'Erro ao atualizar a demanda.', tipo: 'erro' });
       }
     } catch (error) {
-      console.error('Erro ao atualizar demanda:', error);
-      setAlert({
-        isOpen: true,
-        titulo: 'Erro',
-        mensagem: 'Erro ao atualizar demanda. Tente novamente.',
-        tipo: 'erro',
-      });
+      setAlert({ isOpen: true, titulo: 'Erro', mensagem: 'Ocorreu um erro na requisição.', tipo: 'erro' });
     } finally {
       setLoading(false);
     }
   };
 
+  // FUNÇÃO DELETAR RESTAURADA
   const handleDelete = async () => {
     setLoading(true);
     try {
       const resultado = await deletarDemanda(formData.id);
-
       if (resultado) {
-        setAlert({
-          isOpen: true,
-          titulo: 'Sucesso',
-          mensagem: 'Demanda deletada com sucesso!',
-          tipo: 'sucesso',
-        });
+        setAlert({ isOpen: true, titulo: 'Sucesso', mensagem: 'Demanda deletada com sucesso!', tipo: 'sucesso' });
         setTimeout(() => {
           onSuccess?.();
           onClose();
         }, 1500);
       } else {
-        setAlert({
-          isOpen: true,
-          titulo: 'Erro',
-          mensagem: 'Erro ao deletar demanda. Tente novamente.',
-          tipo: 'erro',
-        });
+        setAlert({ isOpen: true, titulo: 'Erro', mensagem: 'Erro ao deletar demanda. Tente novamente.', tipo: 'erro' });
       }
     } catch (error) {
       console.error('Erro ao deletar demanda:', error);
-      setAlert({
-        isOpen: true,
-        titulo: 'Erro',
-        mensagem: 'Erro ao deletar demanda. Tente novamente.',
-        tipo: 'erro',
-      });
+      setAlert({ isOpen: true, titulo: 'Erro', mensagem: 'Erro ao deletar demanda. Tente novamente.', tipo: 'erro' });
     } finally {
       setLoading(false);
     }
   };
 
+  const membrosVisiveis = membrosForm.filter(m => m.status !== 'remover');
+
   return (
     <div className="fixed inset-0 bg-gray-500/60 flex items-center justify-center z-50 p-4">
       <div className="w-full max-w-4xl bg-white rounded-xl border border-gray-300 shadow-2xl max-h-[90vh] overflow-y-auto">
+        
         <div className='w-full bg-light border-b-3 border-default sticky top-0 z-10 flex items-center justify-between'>
           <Titulo tamanho="text-2xl sm:text-3xl p-4 sm:p-6">Editar Demanda</Titulo>
-          <button
-            onClick={() => setDeleteConfirmOpen(true)}
-            className="px-4 py-2 mr-6 border-2 border-red-500 text-red-500 rounded-md hover:bg-red-50 text-sm font-medium cursor-pointer"
-            disabled={loading}
-          >
+          <button onClick={() => setDeleteConfirmOpen(true)} className="px-4 py-2 mr-6 border-2 border-red-500 text-red-500 rounded-md hover:bg-red-50 text-sm font-medium cursor-pointer" disabled={loading}>
             Excluir
           </button>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* Coluna Esquerda */}
             <div className="flex-1 space-y-4 p-8">
-              {/* Título */}
+              
               <div>
                 <label className="block text-muted font-medium text-xs mb-2 uppercase">Título da Demanda *</label>
-                <input
-                  type="text"
-                  name="titulo"
-                  value={formData.titulo}
-                  onChange={handleChange}
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="Digite o título da demanda"
-                  required
-                />
+                <input type="text" name="titulo" value={formData.titulo} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
               </div>
 
-              {/* Descrição */}
               <div>
                 <label className="block text-muted font-medium text-xs mb-2 uppercase">Descrição Detalhada</label>
-                <textarea
-                  name="descricao"
-                  value={formData.descricao}
-                  onChange={handleChange}
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
-                  placeholder="Digite a descrição da demanda"
-                  rows={5}
-                />
+                <textarea name="descricao" value={formData.descricao} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none" rows={5} />
               </div>
 
-              {/* Cliente e Responsável */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Cliente */}
                 <div>
                   <label className="block text-muted font-medium text-xs mb-2 uppercase">Vincular a Cliente *</label>
-                  <select
-                    name="clienteId"
-                    value={formData.clienteDto?.id || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    required
-                  >
+                  <select name="clienteId" value={formData.clienteDto?.id || ''} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                     <option value="">Selecione um cliente</option>
-                    {clientes?.map((cliente) => (
-                      <option key={cliente.id} value={cliente.id}>
-                        {cliente.nome}
-                      </option>
-                    ))}
+                    {clientes?.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
                 </div>
 
-                {/* Responsável */}
                 <div>
-                  <label className="block text-muted font-medium text-xs mb-2 uppercase">Equipe Responsável</label>
-                  <select
-                    name="responsavelId"
-                    onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  >
-                    <option value="">Selecione um funcionário</option>
-                    {funcionarios?.map((funcionario) => (
-                      <option key={funcionario.id} value={funcionario.id}>
-                        {funcionario.nomeCompleto || funcionario.nomeUsuario}
-                      </option>
-                    ))}
+                  <label className="block text-muted font-medium text-xs mb-2 uppercase">Adicionar à Equipe</label>
+                  <select name="responsavelId" value="" onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md cursor-pointer">
+                    <option value="" disabled>Selecione um membro...</option>
+                    {funcionarios?.map(f => <option key={f.id} value={f.id}>{f.nomeCompleto}</option>)}
                   </select>
                 </div>
               </div>
 
-              {/* Responsáveis adicionados */}
-              {formData.responsavelList.length > 0 && (
-                <div>
-                  <label className="block text-muted font-medium text-xs mb-2 uppercase">Membros da Equipe</label>
+              {membrosVisiveis.length > 0 && (
+                <div className="mt-4 p-4 border border-dashed border-gray-300 rounded-md bg-gray-50">
+                  <label className="block text-muted font-medium text-xs mb-3 uppercase">Membros Vinculados na Fila</label>
                   <div className="flex flex-wrap gap-2">
-                    {formData.responsavelList.map((responsavel: any) => (
-                      <div key={responsavel.id} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full flex items-center gap-2 text-sm">
-                        {responsavel.nome}
+                    {membrosVisiveis.map((membro) => (
+                      <div key={membro.funcionarioId} className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full flex items-center gap-2 text-sm shadow-sm transition-all border border-blue-200">
+                        {membro.nome}
                         <button
                           type="button"
-                          onClick={() => removeResponsavel(responsavel.id)}
-                          className="font-bold text-lg hover:text-blue-900 cursor-pointer"
+                          onClick={() => removeResponsavel(membro.funcionarioId)}
+                          className="font-bold text-lg hover:text-red-600 hover:scale-110 cursor-pointer ml-1 leading-none"
+                          title="Remover membro"
                         >
-                          ×
+                          &times;
                         </button>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
             </div>
 
-            {/* Coluna Direita */}
-            <div 
-                className="lg:w-72 space-y-4 p-8"
-                style={{
-                    backgroundColor: '#F1F5F9',
-                }}
-            >
-              {/* Status */}
+            <div className="lg:w-72 space-y-4 p-8 bg-slate-50">
               <div>
                 <label className="block text-muted font-medium text-xs mb-2 uppercase">Status da Tarefa</label>
-                <select
-                  name="statusDemanda"
-                  value={formData.statusDemanda}
-                  onChange={handleChange}
-                  className={`w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 font-semibold text-sm ${statusTextColor} ${statusBgColor}`}
-                >
+                <select name="statusDemanda" value={formData.statusDemanda} onChange={handleChange} className={`w-full px-3 py-2 border border-gray-300 rounded-md font-semibold text-sm ${statusTextColor} ${statusBgColor}`}>
                   <option value="RequerindoEquipe">Aguardando por Equipe</option>
                   <option value="EmAndamento">Em Andamento</option>
                   <option value="Finalizada">Finalizado</option>
@@ -373,83 +311,43 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
                 </select>
               </div>
 
-              {/* Prioridade */}
               <div>
                 <label className="block text-muted font-medium text-xs mb-2 uppercase">Prioridade</label>
                 <div className="flex gap-2 flex-wrap">
-                  {PrioridadeDemanda.map((prioridade) => (
-                    <button
-                      key={prioridade}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, prioridadeDemanda: prioridade as any })}
-                      className={`px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition ${
-                        formData.prioridadeDemanda === prioridade
-                          ? 'bg-primary text-white'
-                          : 'border border-gray-300 text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      {prioridade === 'Media' ? 'Média' : prioridade}
+                  {PrioridadeDemanda.map(p => (
+                    <button key={p} type="button" onClick={() => setFormData({ ...formData, prioridadeDemanda: p as any })} className={`px-4 py-2 rounded-md text-sm cursor-pointer ${formData.prioridadeDemanda === p ? 'bg-primary text-white' : 'border border-gray-300 hover:bg-gray-100'}`}>
+                      {p === 'Media' ? 'Média' : p}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Data de Início */}
               <div>
                 <label className="block text-muted font-medium text-xs mb-2 uppercase">Data de Início</label>
-                <input
-                  type="datetime-local"
-                  name="inicioPrazo"
-                  value={formData.inicioPrazo}
-                  onChange={handleChange}
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                />
+                <input type="datetime-local" name="inicioPrazo" value={formData.inicioPrazo} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
               </div>
 
-              {/* Data de Entrega */}
               <div>
                 <label className="block text-muted font-medium text-xs mb-2 uppercase">Prazo de Entrega</label>
-                <input
-                  type="datetime-local"
-                  name="conclusaoPrazo"
-                  value={formData.conclusaoPrazo}
-                  onChange={handleChange}
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                />
+                <input type="datetime-local" name="conclusaoPrazo" value={formData.conclusaoPrazo} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
               </div>
             </div>
           </div>
 
-          {/* Botões */}
-          <div className="flex gap-3 justify-end pt-6 pb-6 pr-6 border-t border-gray-300 items-center">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 text-sm font-medium cursor-pointer"
-              disabled={loading}
-            >
+          <div className="flex gap-3 justify-end p-6 border-t border-gray-300 items-center bg-gray-50">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium cursor-pointer" disabled={loading}>
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-primary text-white rounded-md hover:brightness-110 cursor-pointer disabled:opacity-50 text-sm font-medium"
-              disabled={loading}
-            >
+            <button type="submit" className="px-5 py-2.5 bg-primary text-white rounded-md hover:brightness-110 cursor-pointer disabled:opacity-50 text-sm font-medium" disabled={loading}>
               {loading ? 'Salvando...' : 'Salvar Alterações'}
             </button>
           </div>
         </form>
       </div>
 
-      <AlertModal
-        isOpen={alert.isOpen}
-        titulo={alert.titulo}
-        mensagem={alert.mensagem}
-        tipo={alert.tipo}
-        onConfirm={() => setAlert({ ...alert, isOpen: false })}
-        mostrarBotaoCancelar={false}
-      />
-
+      <AlertModal isOpen={alert.isOpen} titulo={alert.titulo} mensagem={alert.mensagem} tipo={alert.tipo} onConfirm={() => setAlert({ ...alert, isOpen: false })} mostrarBotaoCancelar={false} />
+      
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO RESTAURADO */}
       <AlertModal
         isOpen={deleteConfirmOpen}
         titulo="Excluir Demanda"
