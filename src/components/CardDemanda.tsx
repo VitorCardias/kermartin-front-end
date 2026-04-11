@@ -4,6 +4,7 @@ import Status from './Status';
 import Prioridade from './Prioridade';
 import ModalAlerta from './modals/AlertModal';
 import { useTarefa } from '../Hooks/useTarefa';
+import { useEquipe } from '../Hooks/useEquipe';
 
 interface CardDemandaProps {
     titulo?: string;
@@ -15,12 +16,14 @@ interface CardDemandaProps {
     onDelete?: () => void;
     demanda?: any;
     onEdit?: (demanda: any) => void;
+    onStatusChanged?: (demandaAtualizada: any) => void;
 }
 
 const CardDemanda: React.FC<CardDemandaProps> = ({
     titulo = "Solicitar Extrato Analítico",
     cliente = "Banco XYZ",
     prioridade = "baixa",
+    status,
     dataVencimento = "",
     responsaveis = [],
     onDelete,
@@ -29,10 +32,68 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
 }) => {
     const { 
         textoVencimento, corVencimento,
-        obterStatus, toggleExpandir, formatarDataExibicao } = useTarefa(dataVencimento, responsaveis);
+        toggleExpandir, formatarDataExibicao } = useTarefa(dataVencimento, responsaveis);
 
+    const { membrosEquipe } = useEquipe(demanda?.id || "");
     const [modalOpen, setModalOpen] = useState(false);
-    let statusAtual = obterStatus();
+
+    const normalizarStatus = (statusBruto?: string): 'aguardando' | 'andamento' | 'finalizado' | 'atrasada' => {
+        switch (statusBruto) {
+            case 'RequerindoEquipe':
+            case 'aguardando':
+                return 'aguardando';
+            case 'EmAndamento':
+            case 'andamento':
+                return 'andamento';
+            case 'Finalizada':
+            case 'finalizado':
+                return 'finalizado';
+            case 'Atrasada':
+            case 'atrasada':
+                return 'atrasada';
+            default:
+                return 'aguardando';
+        }
+    };
+
+    const parseData = (valor?: string): Date | null => {
+        if (!valor) return null;
+
+        if (valor.includes('T')) {
+            const iso = new Date(valor);
+            return isNaN(iso.getTime()) ? null : iso;
+        }
+
+        const normalizada = valor.trim();
+        const [dataParte, horaParte] = normalizada.split(' ');
+        if (!dataParte) return null;
+
+        if (dataParte.includes('-')) {
+            const partes = dataParte.split('-');
+            if (partes.length === 3) {
+                if (partes[0].length === 4) {
+                    const [ano, mes, dia] = partes;
+                    const [hora = '00', minuto = '00', segundo = '00'] = (horaParte || '').split(':');
+                    const dt = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo));
+                    return isNaN(dt.getTime()) ? null : dt;
+                }
+                const [dia, mes, ano] = partes;
+                const [hora = '00', minuto = '00', segundo = '00'] = (horaParte || '').split(':');
+                const dt = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo));
+                return isNaN(dt.getTime()) ? null : dt;
+            }
+        }
+
+        if (dataParte.includes('/')) {
+            const [dia, mes, ano] = dataParte.split('/');
+            const [hora = '00', minuto = '00', segundo = '00'] = (horaParte || '').split(':');
+            const dt = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo));
+            return isNaN(dt.getTime()) ? null : dt;
+        }
+
+        const fallback = new Date(normalizada);
+        return isNaN(fallback.getTime()) ? null : fallback;
+    };
 
     const handleConfirmarDelete = () => {
         setModalOpen(false);
@@ -41,21 +102,36 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
         }
     };
 
-    let corBordaCard;
-    let statusParaComponente: 'aguardando' | 'andamento' | 'finalizado' | 'atrasada' = 'aguardando';
-    switch (statusAtual) {
-        case 'aguardando': corBordaCard = 'border-l-aguardando'; statusParaComponente = 'aguardando'; break;
-        case 'andamento': corBordaCard = 'border-l-andamento'; statusParaComponente = 'andamento'; break;
-        case 'finalizado': corBordaCard = 'border-l-finalizado'; statusParaComponente = 'finalizado'; break;
-        case 'atrasada': corBordaCard = 'border-l-atrasada'; statusParaComponente = 'atrasada'; break;
-        default: corBordaCard = 'border-l-aguardando';
+    const statusBase = demanda?.statusDemanda || status;
+    let statusParaComponente = normalizarStatus(statusBase);
+
+    const dataVencimentoDate = parseData(dataVencimento);
+    if (statusParaComponente !== 'finalizado' && dataVencimentoDate) {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        const vencimento = new Date(dataVencimentoDate);
+        vencimento.setHours(0, 0, 0, 0);
+
+        if (vencimento.getTime() < hoje.getTime()) {
+            statusParaComponente = 'atrasada';
+        }
     }
 
-    // LÓGICA DE EXTRAÇÃO DE RESPONSÁVEIS:
-    // Se a prop responsaveis vier vazia, mas tivermos o objeto demanda, extraímos de lá.
+    let corBordaCard = 'border-l-aguardando';
+    if (statusParaComponente === 'andamento') corBordaCard = 'border-l-andamento';
+    if (statusParaComponente === 'finalizado') corBordaCard = 'border-l-finalizado';
+    if (statusParaComponente === 'atrasada') corBordaCard = 'border-l-atrasada';
+
+    // Mapeia os nomes vindos diretamente do useEquipe
+    const nomesEquipeBuscada = membrosEquipe?.map(m => m.funcionarioDTO.nomeCompleto) || [];
+
+    // Prioridade de exibição dos responsáveis
     const equipeExibicao = responsaveis.length > 0 
         ? responsaveis 
-        : (demanda?.responsavelList?.map((r: any) => r.nome || r.funcionarioDTO?.nomeCompleto) || []);
+        : nomesEquipeBuscada.length > 0 
+            ? nomesEquipeBuscada 
+            : (demanda?.responsavelList?.map((r: any) => r.nome || r.funcionarioDTO?.nomeCompleto) || []);
 
     return (
         <>
@@ -72,10 +148,9 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
                             </div>
                             <Titulo tamanho="text-sm sm:text-base md:text-lg">{titulo} - {cliente}</Titulo>
                             <div className='flex flex-col sm:flex-row gap-1 sm:gap-3 md:gap-5 text-muted text-xs sm:text-xs md:text-sm'>
-                                <p style={corVencimento ? { color: corVencimento } : {}} className='truncate'>
-                                    Vence em: {formatarDataExibicao(dataVencimento)} ({textoVencimento})
+                                <p style={statusParaComponente === 'finalizado' ? {} : { color: corVencimento }} className='truncate'>
+                                    Vence em: {formatarDataExibicao(dataVencimento)} ({statusParaComponente === 'finalizado' ? 'Finalizada' : textoVencimento})
                                 </p>
-                                {/* Utilizando a variável mapeada com redundância */}
                                 <p className='truncate'>
                                     Responsável: {equipeExibicao.length > 0 ? equipeExibicao.join(', ') : 'Sem Atribuições'}
                                 </p>

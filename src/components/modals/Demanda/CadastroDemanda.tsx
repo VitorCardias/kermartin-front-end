@@ -26,12 +26,13 @@ const CadastroDemanda: React.FC<CadastroDemandaModalProps> = ({ isOpen, onClose,
     porcentagemConclusao: 0,
   });
 
-  const [alert, setAlert] = useState({
-    isOpen: false,
-    titulo: '',
-    mensagem: '',
-    tipo: 'aviso' as 'aviso' | 'erro' | 'sucesso',
-  });
+  const [alert, setAlert] = useState<{
+    isOpen: boolean;
+    titulo: string;
+    mensagem: string;
+    tipo: 'aviso' | 'erro' | 'sucesso';
+    acaoConfirmar?: () => void;
+  }>({ isOpen: false, titulo: '', mensagem: '', tipo: 'aviso' });
 
   const [loading, setLoading] = useState(false);
 
@@ -130,21 +131,22 @@ const CadastroDemanda: React.FC<CadastroDemandaModalProps> = ({ isOpen, onClose,
           titulo: 'Sucesso',
           mensagem: 'Demanda cadastrada com sucesso!',
           tipo: 'sucesso',
+          // Passamos a lógica de limpar e fechar a tela para o clique do botão Confirmar
+          acaoConfirmar: () => {
+             setFormData({
+                titulo: '',
+                descricao: '',
+                clienteDto: undefined as any,
+                prioridadeDemanda: 'Media' as const,
+                statusDemanda: 'RequerindoEquipe' as const,
+                inicioPrazo: '',
+                conclusaoPrazo: '',
+                porcentagemConclusao: 0,
+             });
+             onSuccess?.();
+             onClose();
+          }
         });
-        setFormData({
-          titulo: '',
-          descricao: '',
-          clienteDto: undefined,
-          prioridadeDemanda: 'Media',
-          statusDemanda: 'RequerindoEquipe',
-          inicioPrazo: '',
-          conclusaoPrazo: '',
-          porcentagemConclusao: 0,
-        });
-        setTimeout(() => {
-          onSuccess?.();
-          onClose();
-        }, 1500);
       } else {
         setAlert({
           isOpen: true,
@@ -293,7 +295,12 @@ const CadastroDemanda: React.FC<CadastroDemandaModalProps> = ({ isOpen, onClose,
         titulo={alert.titulo}
         mensagem={alert.mensagem}
         tipo={alert.tipo}
-        onConfirm={() => setAlert({ ...alert, isOpen: false })}
+        onConfirm={() => {
+          setAlert(prev => ({ ...prev, isOpen: false }));
+          if (alert.acaoConfirmar) {
+            alert.acaoConfirmar(); 
+          }
+        }} 
         mostrarBotaoCancelar={false}
       />
     </div>

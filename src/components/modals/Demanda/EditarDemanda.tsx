@@ -12,15 +12,14 @@ type EditarDemandaProps = {
   isOpen: boolean;
   onClose: () => void;
   demanda?: any;
-  onSuccess?: () => void;
+  onSuccess?: (demandaAtualizada?: any, acao?: 'editar' | 'excluir') => void;
 };
 
-// Tipo para controlar a fila de edição da equipe
 type MembroFila = {
   funcionarioId: string;
   nome: string;
-  vinculoId?: string; // ID do banco de dados (se já existia)
-  status: 'ativo' | 'novo' | 'remover'; // Controle do que fazer no submit
+  vinculoId?: string; 
+  status: 'ativo' | 'novo' | 'remover'; 
 };
 
 const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda, onSuccess }) => {
@@ -28,7 +27,6 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
   const { clientes } = useClientes();
   const { funcionarios } = useFuncionarios();
   
-  // Busca a equipe original direto da rota de relacionamento
   const { membrosEquipe } = useEquipe(demanda?.id || "");
 
   const [formData, setFormData] = useState({
@@ -43,14 +41,20 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
     porcentagemConclusao: 0,
   });
 
-  // Estado para controlar a equipe na interface
   const [membrosForm, setMembrosForm] = useState<MembroFila[]>([]);
 
-  const [alert, setAlert] = useState({ isOpen: false, titulo: '', mensagem: '', tipo: 'aviso' as 'aviso' | 'erro' | 'sucesso' });
+  // 1. Alteramos o estado do alerta para aceitar uma função "acaoConfirmar"
+  const [alert, setAlert] = useState<{
+    isOpen: boolean;
+    titulo: string;
+    mensagem: string;
+    tipo: 'aviso' | 'erro' | 'sucesso';
+    acaoConfirmar?: () => void;
+  }>({ isOpen: false, titulo: '', mensagem: '', tipo: 'aviso' });
+
   const [loading, setLoading] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
-  // Função utilitária para data no formato do backend
   const obterDataAtualFormato = () => {
     const agora = new Date();
     const dia = String(agora.getDate()).padStart(2, "0");
@@ -62,7 +66,6 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
     return `${dia}-${mes}-${ano} ${horas}:${minutos}:${segundos}`;
   };
 
-  // Carregar dados iniciais da demanda
   useEffect(() => {
     if (isOpen && demanda) {
       setFormData({
@@ -79,13 +82,12 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
     }
   }, [isOpen, demanda]);
 
-  // Sincronizar os membros vindos do banco de dados
   useEffect(() => {
     if (membrosEquipe && membrosEquipe.length > 0) {
       const equipeFormatada: MembroFila[] = membrosEquipe.map(m => ({
         vinculoId: m.id, 
         funcionarioId: m.funcionarioDTO.id, 
-        nome: m.funcionarioDTO.nomeCompleto, // Removido o nomeUsuario
+        nome: m.funcionarioDTO.nomeCompleto,
         status: 'ativo'
       }));
       setMembrosForm(equipeFormatada);
@@ -94,20 +96,35 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
     }
   }, [membrosEquipe]);
 
-  // Efeito para automatizar a mudança de status baseada na equipe
   useEffect(() => {
-    // Verificamos quantos membros estão visíveis (ignorando os marcados para remover)
-    const membrosAtivos = membrosForm.filter(m => m.status !== 'remover').length;
+    setFormData(prev => {
+      if (prev.statusDemanda === 'Finalizada' || prev.statusDemanda === 'Cancelada') {
+        return prev;
+      }
 
-    if (membrosAtivos > 0 && formData.statusDemanda === 'RequerindoEquipe') {
-      // Se tem gente na equipe e estava aguardando, muda para Em Andamento
-      setFormData(prev => ({ ...prev, statusDemanda: 'EmAndamento' }));
-    } else if (membrosAtivos === 0 && formData.statusDemanda === 'EmAndamento') {
-      // Se não tem ninguém e estava Em Andamento, volta para Aguardando Equipe
-      // Nota: Não mexemos se estiver 'Finalizada' ou 'Cancelada' para não bugar o fluxo.
-      setFormData(prev => ({ ...prev, statusDemanda: 'RequerindoEquipe' }));
-    }
-  }, [membrosForm]); // <- O React vai rodar isso toda vez que a lista de membros mudar
+      const membrosAtivos = membrosForm.filter(m => m.status !== 'remover').length;
+      const dataAtual = new Date();
+      const estaAtrasado = prev.conclusaoPrazo ? dataAtual > new Date(prev.conclusaoPrazo) : false;
+
+      let novoStatus = prev.statusDemanda;
+
+      if (estaAtrasado) {
+        novoStatus = 'Atrasada';
+      } else {
+        if (membrosAtivos > 0) {
+          novoStatus = 'EmAndamento';
+        } else {
+          novoStatus = 'RequerindoEquipe';
+        }
+      }
+
+      if (novoStatus !== prev.statusDemanda) {
+        return { ...prev, statusDemanda: novoStatus };
+      }
+
+      return prev;
+    });
+  }, [membrosForm, formData.conclusaoPrazo]);
 
   if (!isOpen) return null;
 
@@ -130,7 +147,6 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
       const clienteSelecionado = clientes?.find(c => c.id === value);
       if (clienteSelecionado) setFormData({ ...formData, clienteDto: clienteSelecionado });
     } else if (name === 'responsavelId') {
-      // ADICIONAR MEMBRO NA FILA
       const func = funcionarios?.find(f => f.id === value);
       if (func) {
         setMembrosForm(prev => {
@@ -141,7 +157,7 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
             }
             return prev;
           }
-          return [...prev, { funcionarioId: func.id, nome: func.nomeCompleto, status: 'novo' }]; // Removido o nomeUsuario
+          return [...prev, { funcionarioId: func.id, nome: func.nomeCompleto, status: 'novo' }];
         });
       }
     } else {
@@ -149,7 +165,6 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
     }
   };
 
-  // REMOVER MEMBRO DA FILA
   const removeResponsavel = (funcionarioId: string) => {
     setMembrosForm(prev => prev.map(m => {
       if (m.funcionarioId === funcionarioId) {
@@ -178,7 +193,6 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
       const resultadoDemanda = await editarDemanda({ ...formData, criador: demanda.criador });
 
       if (resultadoDemanda) {
-        // Processa a fila de Equipe
         const promessasEquipe = membrosForm.map(async (m) => {
           if (m.status === 'novo') {
             return authApi.post("/membro-equipe-demanda", {
@@ -194,11 +208,17 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
 
         await Promise.all(promessasEquipe);
 
-        setAlert({ isOpen: true, titulo: 'Sucesso', mensagem: 'Demanda e equipe atualizadas!', tipo: 'sucesso' });
-        setTimeout(() => {
-          onSuccess?.();
-          onClose();
-        }, 1500);
+        // 2. Removemos o setTimeout e passamos as funções de fechamento para acaoConfirmar
+        setAlert({ 
+          isOpen: true, 
+          titulo: 'Sucesso', 
+          mensagem: 'Demanda e equipe atualizadas!', 
+          tipo: 'sucesso',
+          acaoConfirmar: () => {
+            onSuccess?.(resultadoDemanda, 'editar');
+            onClose();
+          }
+        });
       } else {
         setAlert({ isOpen: true, titulo: 'Erro', mensagem: 'Erro ao atualizar a demanda.', tipo: 'erro' });
       }
@@ -209,17 +229,22 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
     }
   };
 
-  // FUNÇÃO DELETAR RESTAURADA
   const handleDelete = async () => {
     setLoading(true);
     try {
       const resultado = await deletarDemanda(formData.id);
       if (resultado) {
-        setAlert({ isOpen: true, titulo: 'Sucesso', mensagem: 'Demanda deletada com sucesso!', tipo: 'sucesso' });
-        setTimeout(() => {
-          onSuccess?.();
-          onClose();
-        }, 1500);
+        // 3. Mesma coisa no delete: remove setTimeout e usa acaoConfirmar
+        setAlert({ 
+          isOpen: true, 
+          titulo: 'Sucesso', 
+          mensagem: 'Demanda deletada com sucesso!', 
+          tipo: 'sucesso',
+          acaoConfirmar: () => {
+            onSuccess?.(formData, 'excluir');
+            onClose();
+          }
+        });
       } else {
         setAlert({ isOpen: true, titulo: 'Erro', mensagem: 'Erro ao deletar demanda. Tente novamente.', tipo: 'erro' });
       }
@@ -344,10 +369,20 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
           </div>
         </form>
       </div>
-
-      <AlertModal isOpen={alert.isOpen} titulo={alert.titulo} mensagem={alert.mensagem} tipo={alert.tipo} onConfirm={() => setAlert({ ...alert, isOpen: false })} mostrarBotaoCancelar={false} />
+      <AlertModal 
+        isOpen={alert.isOpen} 
+        titulo={alert.titulo} 
+        mensagem={alert.mensagem} 
+        tipo={alert.tipo} 
+        onConfirm={() => {
+          setAlert(prev => ({ ...prev, isOpen: false }));
+          if (alert.acaoConfirmar) {
+            alert.acaoConfirmar(); 
+          }
+        }} 
+        mostrarBotaoCancelar={false} 
+      />
       
-      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO RESTAURADO */}
       <AlertModal
         isOpen={deleteConfirmOpen}
         titulo="Excluir Demanda"

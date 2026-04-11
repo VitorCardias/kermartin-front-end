@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Titulo from "../components/Titulo";
-import Pesquisar from "../components/FiltroPesquisar";
+import Pesquisar from "../components/filtros/FiltroPesquisar";
 import CardCliente from "../components/CardCliente";
 import CadastroCliente from "../components/modals/Cliente/CadastroCliente";
 import EditarCliente from "../components/modals/Cliente/EditarCliente";

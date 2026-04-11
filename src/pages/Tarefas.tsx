@@ -1,5 +1,5 @@
 import CardTarefa from "../components/CardTarefa";
-import Pesquisar from "../components/FiltroPesquisar";
+import Pesquisar from "../components/filtros/FiltroPesquisar";
 import Titulo from "../components/Titulo";
 import { usePrecarregarDados } from '../Hooks/usePrecarregarDados';
 import { authApi } from '../api/AuthService';

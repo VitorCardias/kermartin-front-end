@@ -7,58 +7,78 @@ export const useTarefa = (dataVencimento: string, responsaveisIniciais: string[]
     const [responsaveis, setResponsaveis] = useState<string[]>(responsaveisIniciais);
     const [tarefaFinalizada, setTarefaFinalizada] = useState(false);
 
-    const extrairData = (data: string) => {
+    const parseData = (data: string): Date | null => {
         if (!data) return null;
 
-        const apenasData = data.split(' ')[0];
-        const partes = apenasData.split('-');   
+        const normalizada = data.trim();
+        if (!normalizada) return null;
 
-        if (partes.length !== 3) return null;
-
-        let dia, mes, ano;
-
-        if (partes[0].length === 4) {
-            // Formato ISO (YYYY-MM-DD)
-            [ano, mes, dia] = partes;
-        } else {
-            // Formato BR (DD/MM/YYYY)
-            [dia, mes, ano] = partes;
+        if (normalizada.includes('T')) {
+            const iso = new Date(normalizada);
+            return isNaN(iso.getTime()) ? null : iso;
         }
-        
-        return { dia, mes, ano };
-    }
+
+        const [dataParte, horaParte] = normalizada.split(' ');
+        if (!dataParte) return null;
+
+        const [hora = '00', minuto = '00', segundo = '00'] = (horaParte || '').split(':');
+
+        if (dataParte.includes('-')) {
+            const partes = dataParte.split('-');
+            if (partes.length === 3) {
+                if (partes[0].length === 4) {
+                    const [ano, mes, dia] = partes;
+                    const dt = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo));
+                    return isNaN(dt.getTime()) ? null : dt;
+                }
+
+                const [dia, mes, ano] = partes;
+                const dt = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo));
+                return isNaN(dt.getTime()) ? null : dt;
+            }
+        }
+
+        if (dataParte.includes('/')) {
+            const [dia, mes, ano] = dataParte.split('/');
+            const dt = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo));
+            return isNaN(dt.getTime()) ? null : dt;
+        }
+
+        const fallback = new Date(normalizada);
+        return isNaN(fallback.getTime()) ? null : fallback;
+    };
 
     const formatarDataExibicao = (data: string) => {
-        const dataExtraida = extrairData(data);
-        if (!dataExtraida) return data;
+        const dt = parseData(data);
+        if (!dt) return data;
 
-        const { dia, mes, ano } = dataExtraida;
-        return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+        const dia = String(dt.getDate()).padStart(2, '0');
+        const mes = String(dt.getMonth() + 1).padStart(2, '0');
+        const ano = dt.getFullYear();
+
+        return `${dia}/${mes}/${ano}`;
     }
 
-    // Fun√ß√£o para calcular dias at√© vencer
+    // FunÁ„o para calcular dias atÈ vencer
     const calcularDiasAteVencer = (data: string) => {
-        const dataExtraida = extrairData(data);
-        if (!dataExtraida) return 0;
+        const dataVencimentoCalculada = parseData(data);
+        if (!dataVencimentoCalculada) return 0;
 
-        const { dia, mes, ano } = dataExtraida;
-
-        const dataVencimento = new Date(Number(ano), Number(mes) - 1, Number(dia));
         const hoje = new Date();
 
-        // Zerando horas para comparar s√≥ as datas
+        // Zerando horas para comparar sÛ as datas
         hoje.setHours(0, 0, 0, 0);
-        dataVencimento.setHours(0, 0, 0, 0);
-        
-        // calcula a diferen√ßa em milissegundos das duas datas
-        const diferenca = dataVencimento.getTime() - hoje.getTime();
-        // converte a diferen√ßa em dias
+        dataVencimentoCalculada.setHours(0, 0, 0, 0);
+
+        // calcula a diferenÁa em milissegundos das duas datas
+        const diferenca = dataVencimentoCalculada.getTime() - hoje.getTime();
+        // converte a diferenÁa em dias
         const dias = Math.ceil(diferenca / (1000 * 60 * 60 * 24));
 
         return dias;
     };
 
-    // Fun√ß√£o para gerar o texto de vencimento
+    // FunÁ„o para gerar o texto de vencimento
     const gerarTextoVencimento = (data: string) => {
         const dias = calcularDiasAteVencer(data);
 
@@ -69,7 +89,7 @@ export const useTarefa = (dataVencimento: string, responsaveisIniciais: string[]
         if (dias === 0) {
             return "Hoje";
         } else if (dias === 1) {
-            return "Amanh√£";
+            return "Amanh„";
         } else if (dias > 1) {
             return `${dias} dias`;
         } else {
@@ -77,7 +97,7 @@ export const useTarefa = (dataVencimento: string, responsaveisIniciais: string[]
         }
     };
 
-    // Fun√ß√£o para determinar a cor baseada nos dias faltando
+    // FunÁ„o para determinar a cor baseada nos dias faltando
     const obterCorVencimento = (data: string) => {
         const dias = calcularDiasAteVencer(data);
 
@@ -88,39 +108,38 @@ export const useTarefa = (dataVencimento: string, responsaveisIniciais: string[]
         if (dias <= -1) {
             return "#B91C1C"; // Vermelho - Vencido
         } else if (dias <= 2 && dias >= 0) {
-            return "#B45309"; // Amarelo/Laranja - Aten√ß√£o
+            return "#B45309"; // Amarelo/Laranja - AtenÁ„o
         } else {
-            return ""; // Cor padr√£o (text-muted)
+            return ""; // Cor padr„o (text-muted)
         }
     };
 
-    // Fun√ß√£o para determinar o status baseado em respons√°veis e finaliza√ß√£o
-// Fun√ß√£o para determinar o status baseado na hierarquia de regras
+    // FunÁ„o para determinar o status baseado na hierarquia de regras
     const obterStatus = (): 'aguardando' | 'andamento' | 'finalizado' | 'atrasada' => {
-        // 1. O check de finalizado tem prioridade m√°xima
+        // 1. O check de finalizado tem prioridade m·xima
         if (tarefaFinalizada) {
             return 'finalizado';
         }
 
-        // 2. Se n√£o est√° finalizada, verificamos se est√° vencida
+        // 2. Se n„o est· finalizada, verificamos se est· vencida
         const diasRestantes = calcularDiasAteVencer(dataVencimento);
         if (diasRestantes < 0) {
             return 'atrasada';
         }
 
-        // 3. Se est√° no prazo, verificamos se h√° respons√°veis alocados
+        // 3. Se est· no prazo, verificamos se h· respons·veis alocados
         if (responsaveis.length === 0) {
             return 'aguardando';
         }
 
-        // 4. Se n√£o est√° finalizada, n√£o est√° atrasada e tem respons√°vel:
+        // 4. Se n„o est· finalizada, n„o est· atrasada e tem respons·vel:
         return 'andamento';
     };
 
-    // Fun√ß√£o para obter o texto de respons√°veis
+    // FunÁ„o para obter o texto de respons·veis
     const obterTextoResponsaveis = (): string => {
         if (responsaveis.length === 0) {
-            return 'Sem Atribui√ß√µes';
+            return 'Sem AtribuiÁıes';
         }
         return responsaveis.join(', ');
     };
