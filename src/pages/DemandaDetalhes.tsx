@@ -45,6 +45,7 @@ const DemandaDetalhes: React.FC = () => {
   const demanda = state?.demanda;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [etapaSelecionadaId, setEtapaSelecionadaId] = useState<string | null>(null);
   const { etapas, buscarEtapas } = useEtapas(id || "");
 
   const nomeCliente = demanda?.clienteDto?.nome || "Cliente não informado";
@@ -65,6 +66,10 @@ const DemandaDetalhes: React.FC = () => {
 
   const handleModalSuccess = () => {
     buscarEtapas();
+  };
+
+  const handleEtapaClick = (etapaId: string) => {
+    setEtapaSelecionadaId(etapaSelecionadaId === etapaId ? null : etapaId);
   };
 
   return (
@@ -125,7 +130,6 @@ const DemandaDetalhes: React.FC = () => {
         </aside>
 
         <section className="bg-white border border-default rounded-xl p-4 sm:p-6">
-          
           <div className="flex items-center gap-6 border-b border-default pb-3 overflow-x-auto no-scrollbar">
             {statusTarefas.map((status) => (
               <button
@@ -139,7 +143,11 @@ const DemandaDetalhes: React.FC = () => {
           <div className="mt-6 flex flex-col sm:flex-row justify-between items-start gap-3 ">
             <div>
               <p className="text-xs text-muted font-semibold uppercase">Tarefas de:</p>
-              <p className="text-main text-md font-bold">Coleta de Documentos</p>
+              <p className="text-main text-md font-bold">
+                {etapaSelecionadaId
+                  ? etapas.find((e) => e.id === etapaSelecionadaId)?.titulo || "Coleta de Documentos"
+                  : "Coleta de Documentos"}
+              </p>
             </div>
             <button className="bg-primary text-white text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer hover:brightness-110 transition whitespace-nowrap">
               + Nova Tarefa
@@ -170,8 +178,13 @@ const DemandaDetalhes: React.FC = () => {
               etapas.map((etapa, indice) => (
                 <article
                   key={etapa.id}
-                  className={`border rounded-xl p-4 ${
-                    etapa.porcentagemConclusao > 0 ? "border-blue" : "border-default"
+                  onClick={() => handleEtapaClick(etapa.id)}
+                  className={`border rounded-xl p-4 cursor-pointer transition-all ${
+                    etapaSelecionadaId === etapa.id
+                      ? "border-blue border-2 shadow-md bg-blue/5"
+                      : etapa.porcentagemConclusao > 0
+                      ? "border-blue hover:border-blue/60"
+                      : "border-default hover:border-gray-400"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
