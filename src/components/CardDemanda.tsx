@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Titulo from './Titulo';
 import Status from './Status';
 import Prioridade from './Prioridade';
@@ -30,6 +31,7 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
     demanda,
     onEdit
 }) => {
+    const navigate = useNavigate();
     const { 
         textoVencimento, corVencimento,
         toggleExpandir, formatarDataExibicao } = useTarefa(dataVencimento, responsaveis);
@@ -102,6 +104,19 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
         }
     };
 
+    const handleAbrirDemanda = () => {
+        if (!demanda?.id) {
+            toggleExpandir();
+            return;
+        }
+
+        navigate(`/demanda/${demanda.id}`, {
+            state: {
+                demanda,
+            },
+        });
+    };
+
     const statusBase = demanda?.statusDemanda || status;
     let statusParaComponente = normalizarStatus(statusBase);
 
@@ -137,7 +152,7 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
         <>
             <div 
                 className={`w-full sm:w-5/6 lg:w-4/5 bg-white rounded-lg shadow-md flex flex-col ${corBordaCard} border-l-6 cursor-pointer overflow-hidden transition-all duration-300`}
-                onClick={toggleExpandir}
+                onClick={handleAbrirDemanda}
             >
                 <div className="p-3 sm:p-4 md:p-6 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-between items-start sm:items-center">
                     <div className='flex flex-row gap-2 sm:gap-3 md:gap-4 flex-1 min-w-0'>

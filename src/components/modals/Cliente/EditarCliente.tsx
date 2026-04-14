@@ -33,11 +33,22 @@ const EditarCliente: React.FC<EditarClienteModalProps> = ({ isOpen, cliente, onC
 
   const [loading, setLoading] = useState(false);
 
-  // Sincronizar formData quando o cliente muda
+  // Sincronizar formData quando o cliente muda e aplicar formatação
   useEffect(() => {
-    setFormData(cliente);
+    const clienteFormatado = { ...cliente };
+    if (tipoCliente === "PF" && "cpf" in clienteFormatado) {
+      clienteFormatado.cpf = formatarCPFEnquantoDigita(clienteFormatado.cpf);
+    } else if (tipoCliente === "PJ" && "cnpj" in clienteFormatado) {
+      clienteFormatado.cnpj = formatarCNPJEnquantoDigita(clienteFormatado.cnpj);
+    }
+    clienteFormatado.numeroTelefoneContato = formatarTelefoneEnquantoDigita(clienteFormatado.numeroTelefoneContato);
+    if (clienteFormatado.numeroWhatsAppContato) {
+      clienteFormatado.numeroWhatsAppContato = formatarTelefoneEnquantoDigita(clienteFormatado.numeroWhatsAppContato);
+    }
+    
+    setFormData(clienteFormatado);
     setTipoCliente(cliente.tipoCliente === TipoCliente.PessoaFisica ? "PF" : "PJ");
-  }, [cliente]);
+  }, [cliente, isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -110,6 +121,13 @@ const EditarCliente: React.FC<EditarClienteModalProps> = ({ isOpen, cliente, onC
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCloseAlert = () => {
+    setAlert({ ...alert, isOpen: false });
+    if (alert.tipo === "sucesso") {
+      onClose();
     }
   };
 
@@ -222,40 +240,32 @@ const EditarCliente: React.FC<EditarClienteModalProps> = ({ isOpen, cliente, onC
             />
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4 mt-8 sm:mt-10">
-            <button 
-              type="button" 
-              onClick={onClose}
-              disabled={loading}
-              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition">
-              Cancelar
-            </button>
-            <button 
-              type="submit"
-              disabled={loading}
-              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-md transition hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium">
-              {loading ? "Salvando..." : "Salvar Alterações"}
-            </button>
-          </div>
         </form>
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 md:p-6 flex-shrink-0">
+          <button 
+            type="button" 
+            onClick={onClose}
+            disabled={loading}
+            className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition">
+            Cancelar
+          </button>
+          <button 
+            type="submit"
+            disabled={loading}
+            onClick={handleSubmit}
+            className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-md transition hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+          >
+            {loading ? "Salvando..." : "Salvar Alterações"}
+          </button>
+        </div>
         <AlertModal 
           isOpen={alert.isOpen}
           titulo={alert.titulo}
           mensagem={alert.mensagem}
           tipo={alert.tipo}
           mostrarBotaoCancelar={false}
-          onCancel={() => {
-            setAlert({ ...alert, isOpen: false });
-            if (alert.tipo === "sucesso") {
-              onClose();
-            }
-          }}
-          onConfirm={() => {
-            setAlert({ ...alert, isOpen: false });
-            if (alert.tipo === "sucesso") {
-              onClose();
-            }
-          }}
+          onCancel={handleCloseAlert}
+          onConfirm={handleCloseAlert}
         />
       </div>
     </div>

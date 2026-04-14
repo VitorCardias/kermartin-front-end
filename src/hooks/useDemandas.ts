@@ -46,6 +46,38 @@ const normalizarTexto = (valor?: string) =>
     .toLowerCase()
     .trim();
 
+const parseDataDemanda = (valor?: string | null): Date | null => {
+  if (!valor) return null;
+
+  const texto = valor.trim();
+  if (!texto) return null;
+
+  if (texto.includes("T")) {
+    const dataIso = new Date(texto);
+    return isNaN(dataIso.getTime()) ? null : dataIso;
+  }
+
+  if (texto.includes(" ")) {
+    const [dataParte, horaParte] = texto.split(" ");
+    if (dataParte?.includes("-")) {
+      const [dia, mes, ano] = dataParte.split("-");
+      const [hora = "00", minuto = "00", segundo = "00"] = (horaParte || "").split(":");
+      const data = new Date(
+        Number(ano),
+        Number(mes) - 1,
+        Number(dia),
+        Number(hora),
+        Number(minuto),
+        Number(segundo)
+      );
+      return isNaN(data.getTime()) ? null : data;
+    }
+  }
+
+  const fallback = new Date(texto);
+  return isNaN(fallback.getTime()) ? null : fallback;
+};
+
 export const useDemandas = () => {
   const perfil = usePerfil();
   const demandaTemFuncionarioSelecionado = (demanda: DemandaAPI, funcionariosIds: string[]) => {
@@ -111,6 +143,24 @@ export const useDemandas = () => {
             demandaTemFuncionarioSelecionado(d, filtrosDemanda.funcionariosIds!)
           );
         }
+
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        demandasFiltradas.sort((a, b) => {
+          const dataA = parseDataDemanda(a.conclusaoPrazo);
+          const dataB = parseDataDemanda(b.conclusaoPrazo);
+
+          const categoriaA = !dataA ? 2 : dataA < hoje ? 0 : 1;
+          const categoriaB = !dataB ? 2 : dataB < hoje ? 0 : 1;
+
+          if (categoriaA !== categoriaB) return categoriaA - categoriaB;
+          if (!dataA && !dataB) return a.titulo.localeCompare(b.titulo);
+          if (!dataA) return 1;
+          if (!dataB) return -1;
+
+          return dataA.getTime() - dataB.getTime();
+        });
 
         const totalPaginas = Math.ceil(demandasFiltradas.length / limite);
         const inicio = pagina * limite;
@@ -203,6 +253,11 @@ export const useDemandas = () => {
     try {
       const demandaEditadaPayload: any = {
         ...demandaEditada,
+        titulo: demandaEditada.titulo?.trim(),
+        descricao: demandaEditada.descricao?.trim() || null,
+        clienteDto: demandaEditada.clienteDto || null,
+        criador: demandaEditada.criador?.id ? { id: demandaEditada.criador.id } : demandaEditada.criador,
+        porcentagemConclusao: Number(demandaEditada.porcentagemConclusao || 0),
         inicioPrazo: demandaEditada.inicioPrazo
           ? converterDataTimeLocalParaISO(demandaEditada.inicioPrazo)
           : null,
@@ -210,6 +265,10 @@ export const useDemandas = () => {
           ? converterDataTimeLocalParaISO(demandaEditada.conclusaoPrazo)
           : null,
       };
+
+      // Campos locais que não devem ir para o backend
+      delete demandaEditadaPayload.escritorioId;
+      delete demandaEditadaPayload.responsavelList;
 
       const response = await authApi.put<DemandaAPI>("/demanda", demandaEditadaPayload);
 
@@ -221,7 +280,16 @@ export const useDemandas = () => {
       return null;
     } catch (error) {
       console.error("Erro ao editar demanda:", error);
-      return null;
+      console.error("Payload enviado na edicao:", {
+        ...demandaEditada,
+        inicioPrazo: demandaEditada.inicioPrazo
+          ? converterDataTimeLocalParaISO(demandaEditada.inicioPrazo)
+          : null,
+        conclusaoPrazo: demandaEditada.conclusaoPrazo
+          ? converterDataTimeLocalParaISO(demandaEditada.conclusaoPrazo)
+          : null,
+      });
+      throw error;
     }
   };
 

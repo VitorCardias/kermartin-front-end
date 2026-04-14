@@ -59,26 +59,26 @@ export const useTarefa = (dataVencimento: string, responsaveisIniciais: string[]
         return `${dia}/${mes}/${ano}`;
     }
 
-    // Função para calcular dias até vencer
+    // Funï¿½ï¿½o para calcular dias atï¿½ vencer
     const calcularDiasAteVencer = (data: string) => {
         const dataVencimentoCalculada = parseData(data);
         if (!dataVencimentoCalculada) return 0;
 
         const hoje = new Date();
 
-        // Zerando horas para comparar só as datas
+        // Zerando horas para comparar sï¿½ as datas
         hoje.setHours(0, 0, 0, 0);
         dataVencimentoCalculada.setHours(0, 0, 0, 0);
 
-        // calcula a diferença em milissegundos das duas datas
+        // calcula a diferenï¿½a em milissegundos das duas datas
         const diferenca = dataVencimentoCalculada.getTime() - hoje.getTime();
-        // converte a diferença em dias
+        // converte a diferenï¿½a em dias
         const dias = Math.ceil(diferenca / (1000 * 60 * 60 * 24));
 
         return dias;
     };
 
-    // Função para gerar o texto de vencimento
+    // Funï¿½ï¿½o para gerar o texto de vencimento
     const gerarTextoVencimento = (data: string) => {
         const dias = calcularDiasAteVencer(data);
 
@@ -89,7 +89,7 @@ export const useTarefa = (dataVencimento: string, responsaveisIniciais: string[]
         if (dias === 0) {
             return "Hoje";
         } else if (dias === 1) {
-            return "Amanhã";
+            return "AmanhÃ£";
         } else if (dias > 1) {
             return `${dias} dias`;
         } else {
@@ -97,7 +97,7 @@ export const useTarefa = (dataVencimento: string, responsaveisIniciais: string[]
         }
     };
 
-    // Função para determinar a cor baseada nos dias faltando
+    // Funï¿½ï¿½o para determinar a cor baseada nos dias faltando
     const obterCorVencimento = (data: string) => {
         const dias = calcularDiasAteVencer(data);
 
@@ -108,38 +108,38 @@ export const useTarefa = (dataVencimento: string, responsaveisIniciais: string[]
         if (dias <= -1) {
             return "#B91C1C"; // Vermelho - Vencido
         } else if (dias <= 2 && dias >= 0) {
-            return "#B45309"; // Amarelo/Laranja - Atenção
+            return "#B45309"; // Amarelo/Laranja - Atenï¿½ï¿½o
         } else {
-            return ""; // Cor padrão (text-muted)
+            return ""; // Cor padrï¿½o (text-muted)
         }
     };
 
-    // Função para determinar o status baseado na hierarquia de regras
+    // Funï¿½ï¿½o para determinar o status baseado na hierarquia de regras
     const obterStatus = (): 'aguardando' | 'andamento' | 'finalizado' | 'atrasada' => {
-        // 1. O check de finalizado tem prioridade máxima
+        // 1. O check de finalizado tem prioridade mï¿½xima
         if (tarefaFinalizada) {
             return 'finalizado';
         }
 
-        // 2. Se não está finalizada, verificamos se está vencida
+        // 2. Se nï¿½o estï¿½ finalizada, verificamos se estï¿½ vencida
         const diasRestantes = calcularDiasAteVencer(dataVencimento);
         if (diasRestantes < 0) {
             return 'atrasada';
         }
 
-        // 3. Se está no prazo, verificamos se há responsáveis alocados
+        // 3. Se estï¿½ no prazo, verificamos se hï¿½ responsï¿½veis alocados
         if (responsaveis.length === 0) {
             return 'aguardando';
         }
 
-        // 4. Se não está finalizada, não está atrasada e tem responsável:
+        // 4. Se nï¿½o estï¿½ finalizada, nï¿½o estï¿½ atrasada e tem responsï¿½vel:
         return 'andamento';
     };
 
-    // Função para obter o texto de responsáveis
+    // Funï¿½ï¿½o para obter o texto de responsï¿½veis
     const obterTextoResponsaveis = (): string => {
         if (responsaveis.length === 0) {
-            return 'Sem Atribuições';
+            return 'Sem Atribuiï¿½ï¿½es';
         }
         return responsaveis.join(', ');
     };

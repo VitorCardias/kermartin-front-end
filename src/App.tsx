@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-d
 import { useContext } from "react";
 import Tarefas from "./pages/Tarefas";
 import Demandas from "./pages/Demandas";
+import DemandaDetalhes from "./pages/DemandaDetalhes";
 import Clientes from "./pages/Clientes";
 import Funcionarios from "./pages/Funcionarios";
 import Agenda from "./pages/Agenda";
@@ -64,6 +65,7 @@ function AppContent() {
           <Route element={<PrivateRoute />}>
             <Route path="/" element={<Tarefas />} />
             <Route path="/demanda" element={<Demandas />} />
+            <Route path="/demanda/:id" element={<DemandaDetalhes />} />
             <Route path="/cliente" element={<Clientes />} />
             <Route path="/agenda" element={<Agenda />} />
           </Route>

@@ -77,7 +77,6 @@ const Clientes: React.FC = () => {
                     onClose={() => setClienteEditando(null)}
                     onEditar={async (clienteAtualizado) => {
                         await editarCliente(clienteAtualizado);
-                        setClienteEditando(null);
                     }}
                 />
             )}

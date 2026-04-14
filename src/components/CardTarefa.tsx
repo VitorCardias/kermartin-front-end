@@ -47,7 +47,7 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
     return (
         <>
             <div 
-                className="w-full sm:w-5/6 lg:w-4/5 bg-white rounded-lg shadow-md flex flex-col border-2 border-default cursor-pointer overflow-hidden transition-all duration-300"
+                className="w-full bg-white rounded-lg shadow-md flex flex-col border-2 border-default cursor-pointer overflow-hidden transition-all duration-300"
                 onClick={toggleExpandir}
             >
                 <div className="p-3 sm:p-4 md:p-6 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-between items-start sm:items-center">

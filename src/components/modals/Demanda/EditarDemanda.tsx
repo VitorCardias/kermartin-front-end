@@ -68,11 +68,12 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
 
   useEffect(() => {
     if (isOpen && demanda) {
+      const clienteCompleto = clientes?.find(c => c.id === demanda.clienteDto?.id);
       setFormData({
         id: demanda.id,
         titulo: demanda.titulo || '',
         descricao: demanda.descricao || '',
-        clienteDto: demanda.clienteDto,
+        clienteDto: clienteCompleto || demanda.clienteDto,
         prioridadeDemanda: demanda.prioridadeDemanda || 'Media',
         statusDemanda: demanda.statusDemanda || 'RequerindoEquipe',
         inicioPrazo: converterParaFormatoDateTimeLocal(demanda.inicioPrazo),
@@ -80,7 +81,7 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
         porcentagemConclusao: demanda.porcentagemConclusao || 0,
       });
     }
-  }, [isOpen, demanda]);
+  }, [isOpen, demanda, clientes]);
 
   useEffect(() => {
     if (membrosEquipe && membrosEquipe.length > 0) {
@@ -175,8 +176,9 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
   };
 
   const validateForm = (): string | null => {
-    if (!formData.titulo.trim()) return 'Título da demanda é obrigatório';
-    if (!formData.clienteDto) return 'Cliente é obrigatório';
+    if (!formData.titulo.trim()) return 'Titulo da demanda e obrigatorio';
+    if (formData.titulo.trim().length < 3) return 'Titulo deve ter no minimo 3 caracteres';
+    if (!formData.clienteDto) return 'Cliente e obrigatorio';
     return null;
   };
 
@@ -190,7 +192,30 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
 
     setLoading(true);
     try {
-      const resultadoDemanda = await editarDemanda({ ...formData, criador: demanda.criador });
+      const criadorSeguro =
+        demanda?.criador?.id
+          ? { id: demanda.criador.id }
+          : demanda?.escritorioId
+            ? { id: demanda.escritorioId }
+            : demanda?.criador;
+
+      const clienteSeguro =
+        clientes?.find(c => c.id === formData.clienteDto?.id) || formData.clienteDto;
+      
+            const payloadEdicao = {
+        ...formData,
+        titulo: formData.titulo.trim(),
+        descricao: formData.descricao?.trim() ? formData.descricao.trim() : null,
+        clienteDto: clienteSeguro,
+        prioridadeDemanda: formData.prioridadeDemanda,
+        statusDemanda: formData.statusDemanda,
+        porcentagemConclusao: Number(formData.porcentagemConclusao || 0),
+        inicioPrazo: formData.inicioPrazo || null,
+        conclusaoPrazo: formData.conclusaoPrazo || null,
+        criador: criadorSeguro,
+      };
+
+      const resultadoDemanda = await editarDemanda(payloadEdicao as any);
 
       if (resultadoDemanda) {
         const promessasEquipe = membrosForm.map(async (m) => {
@@ -222,8 +247,14 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
       } else {
         setAlert({ isOpen: true, titulo: 'Erro', mensagem: 'Erro ao atualizar a demanda.', tipo: 'erro' });
       }
-    } catch (error) {
-      setAlert({ isOpen: true, titulo: 'Erro', mensagem: 'Ocorreu um erro na requisição.', tipo: 'erro' });
+    } catch (error: any) {
+      const mensagemErroApi =
+        (typeof error?.response?.data === 'string' ? error.response.data : undefined) ||
+        error?.response?.data?.message ||
+        error?.response?.data?.mensagem ||
+        error?.response?.data?.error ||
+        'Ocorreu um erro na requisicao.';
+      setAlert({ isOpen: true, titulo: 'Erro', mensagem: mensagemErroApi, tipo: 'erro' });
     } finally {
       setLoading(false);
     }
@@ -401,3 +432,4 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
 };
 
 export default EditarDemanda;
+

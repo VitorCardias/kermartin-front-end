@@ -10,7 +10,12 @@ const Navbar: React.FC = () => {
     const perfil = usePerfil();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-    const isActive = (path: string) => location.pathname === path;
+    const isActive = (path: string) => {
+        if (path === "/demanda") {
+            return location.pathname === "/demanda" || location.pathname.startsWith("/demanda/");
+        }
+        return location.pathname === path;
+    };
 
     // Links baseado no role e tipo do usuário
     const isSuperAdmin = usuario?.roles?.includes("ROLE_SUPER_ADMIN");
