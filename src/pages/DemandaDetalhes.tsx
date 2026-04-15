@@ -4,6 +4,7 @@ import Titulo from "../components/Titulo";
 import { useTarefa } from "../Hooks/useTarefa";
 import download from "../assets/icon-download.svg";
 import CardTarefa from "../components/CardTarefa";
+import CardEtapa from "../components/CardEtapa";
 import CadastroEtapa from "../components/modals/Etapa/CadastroEtapa";
 import { useEtapas } from "../Hooks/useEtapas";
 
@@ -176,38 +177,13 @@ const DemandaDetalhes: React.FC = () => {
           <div className="mt-5 space-y-3">
             {etapas && etapas.length > 0 ? (
               etapas.map((etapa, indice) => (
-                <article
+                <CardEtapa
                   key={etapa.id}
-                  onClick={() => handleEtapaClick(etapa.id)}
-                  className={`border rounded-xl p-4 cursor-pointer transition-all ${
-                    etapaSelecionadaId === etapa.id
-                      ? "border-blue border-2 shadow-md bg-blue/5"
-                      : etapa.porcentagemConclusao > 0
-                      ? "border-blue hover:border-blue/60"
-                      : "border-default hover:border-gray-400"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h3 className="text-main font-bold">
-                        {indice + 1}. {etapa.titulo}
-                      </h3>
-                      <p className="text-xs text-muted mt-1">
-                        Prazo:{" "}
-                        {etapa.conclusaoPrazo
-                          ? new Date(etapa.conclusaoPrazo).toLocaleDateString("pt-BR")
-                          : "Sem prazo"}
-                      </p>
-                    </div>
-                    <span className="text-xs text-muted font-semibold">{etapa.porcentagemConclusao}%</span>
-                  </div>
-                  <div className="mt-3 w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue rounded-full"
-                      style={{ width: `${etapa.porcentagemConclusao}%` }}
-                    />
-                  </div>
-                </article>
+                  etapa={etapa}
+                  indice={indice}
+                  isSelected={etapaSelecionadaId === etapa.id}
+                  onClick={handleEtapaClick}
+                />
               ))
             ) : (
               <p className="text-xs text-muted text-center py-4">Nenhuma etapa cadastrada</p>
