@@ -28,7 +28,7 @@ const ModalAlerta: React.FC<ModalAlertaProps> = ({
     if (!isOpen) return null;
 
     const coresBotao = {
-        aviso: 'bg-yellow-500 hover:bg-yellow-600',
+        aviso: 'bg-red-500 hover:bg-red-600',
         erro: 'bg-red-500 hover:bg-red-600',
         sucesso: 'bg-green-500 hover:bg-green-600'
     };

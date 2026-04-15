@@ -183,6 +183,8 @@ const DemandaDetalhes: React.FC = () => {
                   indice={indice}
                   isSelected={etapaSelecionadaId === etapa.id}
                   onClick={handleEtapaClick}
+                  idDemanda={id || ""}
+                  onEtapaAtualizada={handleModalSuccess}
                 />
               ))
             ) : (
