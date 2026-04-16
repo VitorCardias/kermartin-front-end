@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Titulo from "../components/Titulo";
 import { useTarefa } from "../Hooks/useTarefa";
@@ -6,6 +6,7 @@ import download from "../assets/icon-download.svg";
 import CardTarefa from "../components/CardTarefa";
 import CardEtapa from "../components/CardEtapa";
 import CadastroEtapa from "../components/modals/Etapa/CadastroEtapa";
+import CadastroTarefa from "../components/modals/Tarefa/CadastroTarefa";
 import { useEtapas } from "../Hooks/useEtapas";
 
 type DemandaDetalheState = {
@@ -45,9 +46,12 @@ const DemandaDetalhes: React.FC = () => {
   const state = location.state as DemandaDetalheState | null;
   const demanda = state?.demanda;
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalEtapaOpen, setIsModalEtapaOpen] = useState(false);
+  const [isModalTarefaOpen, setIsModalTarefaOpen] = useState(false);
   const [etapaSelecionadaIds, setEtapaSelecionadaIds] = useState<Set<string>>(new Set());
+  
   const { etapas, buscarEtapas } = useEtapas(id || "");
+  const { tarefas, buscarTarefas, formatarDataExibicao, loading: loadingTarefas, deletarTarefa } = useTarefa();
 
   const nomeCliente = demanda?.clienteDto?.nome || "Cliente não informado";
   const tituloDemanda = demanda?.titulo || "Demanda";
@@ -57,16 +61,34 @@ const DemandaDetalhes: React.FC = () => {
     demanda?.responsavelList?.[0]?.funcionarioDTO?.nomeCompleto ||
     "Sem atribuição";
 
-  const { formatarDataExibicao } = useTarefa(prazoDemanda);
+  // Buscar tarefas ao montar o componente ou quando o ID mudar
+  useEffect(() => {
+    if (id) {
+      buscarTarefas("demanda", id);
+    }
+  }, [id]);
 
-  const statusTarefas = ["Todas", "Não Vinculado", "Etapa 1", "Etapa 2", "Etapa 3"];
+  // Filtrar tarefas da etapa selecionada
+  const tarefasFiltradas = etapaSelecionadaIds.size > 0
+    ? tarefas.filter((tarefa) => {
+        const etapaId = [...etapaSelecionadaIds][0];
+        return tarefa.etapaDemandaDTO?.id === etapaId;
+      })
+    : tarefas;
 
-  const handleModalClose = () => {
-    setIsModalOpen(false);
+  const handleModalEtapaClose = () => {
+    setIsModalEtapaOpen(false);
+  };
+
+  const handleModalTarefaClose = () => {
+    setIsModalTarefaOpen(false);
   };
 
   const handleModalSuccess = () => {
     buscarEtapas();
+    if (id) {
+      buscarTarefas("demanda", id);
+    }
   };
 
   const handleEtapaClick = (etapaId: string, isMultiple: boolean) => {
@@ -93,6 +115,21 @@ const DemandaDetalhes: React.FC = () => {
       return novoSet;
     });
   };
+
+  const handleDeleteTarefa = async (tarefaId: string) => {
+    try {
+      await deletarTarefa(tarefaId);
+      if (id) {
+        buscarTarefas("demanda", id);
+      }
+    } catch (error) {
+      console.error("Erro ao deletar tarefa:", error);
+    }
+  };
+
+  const etapaSelecionada = etapaSelecionadaIds.size > 0
+    ? etapas.find((e) => e.id === [...etapaSelecionadaIds][0])
+    : null;
 
   return (
     <div className="w-full px-3 sm:px-4 lg:px-8 py-4">
@@ -153,42 +190,76 @@ const DemandaDetalhes: React.FC = () => {
 
         <section className="bg-white border border-default rounded-xl p-4 sm:p-6">
           <div className="flex items-center gap-6 border-b border-default pb-3 overflow-x-auto no-scrollbar">
-            {statusTarefas.map((status) => (
+            <button
+              className="text-muted font-semibold text-sm cursor-pointer whitespace-nowrap hover:text-primary transition"
+              onClick={() => setEtapaSelecionadaIds(new Set())}
+            >
+              Todas
+            </button>
+            {etapas.map((etapa) => (
               <button
-                key={status}
-                className="text-muted font-semibold text-sm cursor-pointer whitespace-nowrap"
+                key={etapa.id}
+                className={`font-semibold text-sm cursor-pointer whitespace-nowrap transition ${
+                  etapaSelecionadaIds.has(etapa.id)
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-muted hover:text-primary'
+                }`}
+                onClick={() => handleEtapaClick(etapa.id, false)}
               >
-                {status}
+                {etapa.titulo}
               </button>
             ))}
           </div>
-          <div className="mt-6 flex flex-col sm:flex-row justify-between items-start gap-3 ">
+
+          <div className="mt-6 flex flex-col sm:flex-row justify-between items-start gap-3">
             <div>
               <p className="text-xs text-muted font-semibold uppercase">Tarefas de:</p>
               <p className="text-main text-md font-bold">
-                {etapaSelecionadaIds
-                  ? etapas.find((e) => e.id === [...etapaSelecionadaIds][0])?.titulo || "Coleta de Documentos"
-                  : "Coleta de Documentos"}
+                {etapaSelecionada?.titulo || "Todas as tarefas"}
               </p>
             </div>
-            <button className="bg-primary text-white text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer hover:brightness-110 transition whitespace-nowrap">
+            <button
+              type="button"
+              onClick={() => setIsModalTarefaOpen(true)}
+              className="bg-primary text-white text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer hover:brightness-110 transition whitespace-nowrap"
+            >
               + Nova Tarefa
             </button>
           </div>
 
           <div className="mt-4 space-y-3">
-            <CardTarefa />
-            <CardTarefa />
-            <CardTarefa />
+            {loadingTarefas ? (
+              <div className="flex justify-center items-center py-8">
+                <p className="text-muted">Carregando tarefas...</p>
+              </div>
+            ) : tarefasFiltradas.length > 0 ? (
+              tarefasFiltradas.map((tarefa) => (
+                <CardTarefa
+                  key={tarefa.id}
+                  tarefa={tarefa}
+                  titulo={tarefa.titulo}
+                  descricao={tarefa.descricao || "Sem descrição"}
+                  prioridade={tarefa.prioridade.toLowerCase() as 'baixa' | 'media' | 'alta'}
+                  dataVencimento={formatarDataExibicao(tarefa.conclusaoPrazo)}
+                  responsaveis={[tarefa.criador?.nome || "Sem responsável"]}
+                  onDelete={() => handleDeleteTarefa(tarefa.id)}
+                  onEditSuccess={() => handleModalSuccess()}
+                />
+              ))
+            ) : (
+              <div className="flex justify-center items-center py-8">
+                <p className="text-muted">Nenhuma tarefa encontrada</p>
+              </div>
+            )}
           </div>
         </section>
 
         <aside className="bg-white border border-default rounded-xl p-4 sm:p-5 h-fit">
-          <div className="flex flex-col sm:flex-row items-start justify-between gap-3 ">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
             <Titulo tamanho="text-lg">Etapas do Processo</Titulo>
             <button
               type="button"
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => setIsModalEtapaOpen(true)}
               className="bg-primary text-white text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer hover:brightness-110 transition"
             >
               + Nova Etapa
@@ -225,10 +296,19 @@ const DemandaDetalhes: React.FC = () => {
 
       {/* Modal de Cadastro de Etapa */}
       <CadastroEtapa
-        isOpen={isModalOpen}
+        isOpen={isModalEtapaOpen}
         idDemanda={id || ""}
-        onClose={handleModalClose}
+        onClose={handleModalEtapaClose}
         onSuccess={handleModalSuccess}
+      />
+
+      {/* Modal de Cadastro de Tarefa */}
+      <CadastroTarefa
+        isOpen={isModalTarefaOpen}
+        onClose={handleModalTarefaClose}
+        onSuccess={handleModalSuccess}
+        demandaIdPadrao={id}
+        contexto="demanda"
       />
     </div>
   );

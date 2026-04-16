@@ -6,8 +6,12 @@ import Titulo from './Titulo';
 import Status from './Status';
 import Prioridade from './Prioridade';
 import ModalAlerta from './modals/AlertModal';
-import { useTarefa } from '../Hooks/useTarefa';
+import EditarTarefa from './modals/Tarefa/EditarTarefa';
+import { useCardTarefa } from '../Hooks/useCardTarefa';
+import { type TarefaAPI } from '../Hooks/useTarefa';
+
 interface CardTarefaProps {
+    tarefa?: TarefaAPI;
     titulo?: string;
     status?: 'aguardando' | 'andamento' | 'finalizado' | 'atrasada';
     prioridade?: 'baixa' | 'media' | 'alta';
@@ -15,21 +19,26 @@ interface CardTarefaProps {
     responsaveis?: string[];
     descricao?: string;
     onDelete?: () => void;
+    onEditSuccess?: () => void;
 }
 
 const CardTarefa: React.FC<CardTarefaProps> = ({
+    tarefa,
     titulo = "Solicitar Extrato Analítico",
     prioridade = "baixa",
     dataVencimento = "21/03/2026",
     responsaveis = ['João Silva', 'Maria Oliveira'],
-    descricao = "Testando escrever algo para aparecer quando precisar , pode ser qualquer coisa a ideia é que quando o usuário clique no card desça um elemento com a descrição da tarefa e o icone de arrow aponte para baixo ao invés de apontar para o lado e se o usuário clicar novamente no card a descrição sobe e o icone de arrow volta ao normal ",
-    onDelete
+    descricao = "Sem descrição",
+    onDelete,
+    onEditSuccess,
 }) => {
     const { 
         expandido, checked, animatingCheck, textoVencimento, corVencimento,
-        obterStatus, toggleExpandir, toggleChecked, toggleFinalizada } = useTarefa(dataVencimento, responsaveis);
+        obterStatus, toggleExpandir, toggleChecked, toggleFinalizada 
+    } = useCardTarefa(dataVencimento, responsaveis);
 
     const [modalOpen, setModalOpen] = useState(false);
+    const [editarModalOpen, setEditarModalOpen] = useState(false);
     const statusAtual = obterStatus();
 
     const handleExcluirClick = (e: React.MouseEvent) => {
@@ -41,6 +50,18 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
         setModalOpen(false);
         if (onDelete) {
             onDelete();
+        }
+    };
+
+    const handleEditarClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setEditarModalOpen(true);
+    };
+
+    const handleEditSuccess = () => {
+        setEditarModalOpen(false);
+        if (onEditSuccess) {
+            onEditSuccess();
         }
     };
 
@@ -81,7 +102,7 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
                         <div className='flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-1 sm:gap-2'>
                             <button 
                                 className='text-xs sm:text-xs md:text-sm bg-primary text-white px-2 sm:px-3 py-1.5 sm:py-1 rounded hover:brightness-110 transition hover:-translate-y-1 cursor-pointer whitespace-nowrap order-2 sm:order-1'
-                                onClick={(e) => { e.stopPropagation();}}
+                                onClick={handleEditarClick}
                             >
                                 Editar
                             </button>
@@ -92,7 +113,11 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
                                 Excluir
                             </button>
                         </div>
-                        <img src={arrow} alt="Detalhes" className={`w-5 sm:w-6 md:w-9 shrink-0 transition-transform duration-300 order-3 sm:order-3 ml-auto sm:ml-0`}/>
+                        <img 
+                            src={arrow} 
+                            alt="Detalhes" 
+                            className={`w-5 sm:w-6 md:w-9 shrink-0 transition-transform duration-300 order-3 sm:order-3 ml-auto sm:ml-0 ${expandido ? 'rotate-90' : ''}`}
+                        />
                     </div>
                 </div>
                 <div 
@@ -100,13 +125,14 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
                 >
                     <div className="pt-3 sm:pt-4 border-t-2 border-default">
                         <h4 className="text-xs font-semibold text-muted uppercase mb-2">Descrição da Tarefa</h4>
-                        <p className="text-gray-600 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
+                        <p className="text-gray-600 text-xs sm:text-sm leading-relaxed w-full">
                             {descricao}
                         </p>
                     </div>
                 </div>
             </div>
 
+            {/* Modal de confirmação de exclusão */}
             <ModalAlerta
                 isOpen={modalOpen}
                 titulo="Excluir Tarefa"
@@ -117,6 +143,16 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
                 onCancel={() => setModalOpen(false)}
                 onConfirm={handleConfirmarDelete}
             />
+
+            {/* Modal de editar tarefa */}
+            {tarefa && (
+                <EditarTarefa
+                    isOpen={editarModalOpen}
+                    onClose={() => setEditarModalOpen(false)}
+                    tarefa={tarefa}
+                    onSuccess={handleEditSuccess}
+                />
+            )}
         </>
     );
 }

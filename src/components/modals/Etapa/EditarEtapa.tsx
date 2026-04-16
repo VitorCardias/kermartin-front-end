@@ -283,21 +283,6 @@ const EditarEtapa: React.FC<EditarEtapaModalProps> = ({ isOpen, etapa, idDemanda
               </select>
             </div>
           </div>
-
-          {/* Porcentagem de Conclusão */}
-          <div>
-            <label className="block text-primary font-medium text-sm mb-2">Porcentagem de Conclusão (%)</label>
-            <input
-              type="number"
-              name="porcentagemConclusao"
-              value={formData.porcentagemConclusao}
-              onChange={handleChange}
-              min="0"
-              max="100"
-              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            />
-          </div>
-
           {/* Datas em linha */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -310,7 +295,6 @@ const EditarEtapa: React.FC<EditarEtapaModalProps> = ({ isOpen, etapa, idDemanda
                 className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
-
             <div>
               <label className="block text-primary font-medium text-sm mb-2">Data de Conclusão</label>
               <input
