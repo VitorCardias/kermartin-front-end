@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Titulo from './Titulo';
 import Status from './Status';
 import Prioridade from './Prioridade';
 import ModalAlerta from './modals/AlertModal';
-import { useTarefa } from '../Hooks/useTarefa';
 import { useEquipe } from '../Hooks/useEquipe';
 
 interface CardDemandaProps {
@@ -32,32 +31,10 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
     onEdit
 }) => {
     const navigate = useNavigate();
-    const { 
-        textoVencimento, corVencimento,
-        toggleExpandir, formatarDataExibicao } = useTarefa(dataVencimento, responsaveis);
-
     const { membrosEquipe } = useEquipe(demanda?.id || "");
     const [modalOpen, setModalOpen] = useState(false);
 
-    const normalizarStatus = (statusBruto?: string): 'aguardando' | 'andamento' | 'finalizado' | 'atrasada' => {
-        switch (statusBruto) {
-            case 'RequerindoEquipe':
-            case 'aguardando':
-                return 'aguardando';
-            case 'EmAndamento':
-            case 'andamento':
-                return 'andamento';
-            case 'Finalizada':
-            case 'finalizado':
-                return 'finalizado';
-            case 'Atrasada':
-            case 'atrasada':
-                return 'atrasada';
-            default:
-                return 'aguardando';
-        }
-    };
-
+    // Parse de data igual ao useCardTarefa
     const parseData = (valor?: string): Date | null => {
         if (!valor) return null;
 
@@ -97,6 +74,73 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
         return isNaN(fallback.getTime()) ? null : fallback;
     };
 
+    const normalizarStatus = (statusBruto?: string): 'aguardando' | 'andamento' | 'finalizado' | 'atrasada' => {
+        switch (statusBruto) {
+            case 'RequerindoEquipe':
+            case 'aguardando':
+                return 'aguardando';
+            case 'EmAndamento':
+            case 'andamento':
+                return 'andamento';
+            case 'Finalizada':
+            case 'finalizado':
+                return 'finalizado';
+            case 'Atrasada':
+            case 'atrasada':
+                return 'atrasada';
+            default:
+                return 'aguardando';
+        }
+    };
+
+    // Calcular informações de vencimento
+    const vencimentoInfo = useMemo(() => {
+        const dataVencimentoDate = parseData(dataVencimento);
+        if (!dataVencimentoDate) return { texto: "Sem data", cor: '#6B7280' };
+
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        dataVencimentoDate.setHours(0, 0, 0, 0);
+
+        const diffTime = dataVencimentoDate.getTime() - hoje.getTime();
+        const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDias < 0) {
+            return { texto: `${Math.abs(diffDias)} dias atrasado`, cor: '#EF4444' };
+        }
+        if (diffDias === 0) {
+            return { texto: 'Vence hoje', cor: '#F59E0B' };
+        }
+        if (diffDias === 1) {
+            return { texto: 'Vence amanhã', cor: '#F59E0B' };
+        }
+        if (diffDias <= 3) {
+            return { texto: `${diffDias} dias`, cor: '#F59E0B' };
+        }
+        return { texto: `${diffDias} dias`, cor: '#10B981' };
+    }, [dataVencimento]);
+
+    // Formatar data para exibição
+    const formatarDataExibicao = (data: string | null | undefined): string => {
+        if (!data) return "Sem data";
+
+        try {
+            const dataObj = parseData(data);
+            if (!dataObj) {
+                return "Data inválida";
+            }
+
+            const dia = String(dataObj.getDate()).padStart(2, '0');
+            const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+            const ano = dataObj.getFullYear();
+
+            return `${dia}/${mes}/${ano}`;
+        } catch (error) {
+            console.error('Erro ao formatar data:', data, error);
+            return "Data inválida";
+        }
+    };
+
     const handleConfirmarDelete = () => {
         setModalOpen(false);
         if (onDelete) {
@@ -106,7 +150,6 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
 
     const handleAbrirDemanda = () => {
         if (!demanda?.id) {
-            toggleExpandir();
             return;
         }
 
@@ -163,8 +206,8 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
                             </div>
                             <Titulo tamanho="text-sm sm:text-base md:text-lg">{titulo} - {cliente}</Titulo>
                             <div className='flex flex-col sm:flex-row gap-1 sm:gap-3 md:gap-5 text-muted text-xs sm:text-xs md:text-sm'>
-                                <p style={statusParaComponente === 'finalizado' ? {} : { color: corVencimento }} className='truncate'>
-                                    Vence em: {formatarDataExibicao(dataVencimento)} ({statusParaComponente === 'finalizado' ? 'Finalizada' : textoVencimento})
+                                <p style={statusParaComponente === 'finalizado' ? {} : { color: vencimentoInfo.cor }} className='truncate'>
+                                    Vence em: {formatarDataExibicao(dataVencimento)} ({statusParaComponente === 'finalizado' ? 'Finalizada' : vencimentoInfo.texto})
                                 </p>
                                 <p className='truncate'>
                                     Responsável: {equipeExibicao.length > 0 ? equipeExibicao.join(', ') : 'Sem Atribuições'}
@@ -188,8 +231,8 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
 
             <ModalAlerta
                 isOpen={modalOpen}
-                titulo="Excluir Tarefa"
-                mensagem={`Tem certeza que deseja excluir a tarefa "${titulo}"? Esta ação não pode ser desfeita.`}
+                titulo="Excluir Demanda"
+                mensagem={`Tem certeza que deseja excluir a demanda "${titulo}"? Esta ação não pode ser desfeita.`}
                 botaoCancelar="Cancelar"
                 botaoConfirmar="Excluir"
                 tipo="erro"

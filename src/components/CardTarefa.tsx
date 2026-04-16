@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import checkBox from '../assets/check-box.svg';
 import uncheckBox from '../assets/uncheck-box.svg';
 import arrow from '../assets/right-arrow.svg';
@@ -32,14 +32,45 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
     onDelete,
     onEditSuccess,
 }) => {
+    // Usar dados da tarefa se disponível, caso contrário usar props
+    const [tarefaAtual, setTarefaAtual] = useState<TarefaAPI | undefined>(tarefa);
+    const [tituloAtual, setTituloAtual] = useState(titulo);
+    const [descricaoAtual, setDescricaoAtual] = useState(descricao);
+    const [prioridadeAtual, setPrioridadeAtual] = useState(prioridade);
+    const [dataVencimentoAtual, setDataVencimentoAtual] = useState(dataVencimento);
+    const [responsaveisAtual, setResponsaveisAtual] = useState(responsaveis);
+
     const { 
         expandido, checked, animatingCheck, textoVencimento, corVencimento,
-        obterStatus, toggleExpandir, toggleChecked, toggleFinalizada 
-    } = useCardTarefa(dataVencimento, responsaveis);
+        obterStatus, toggleExpandir, toggleChecked, toggleFinalizada, formatarDataExibicao
+    } = useCardTarefa(dataVencimentoAtual, responsaveisAtual, tarefaAtual);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editarModalOpen, setEditarModalOpen] = useState(false);
     const statusAtual = obterStatus();
+
+    // Atualizar dados quando a tarefa mudar
+    useEffect(() => {
+        if (tarefa) {
+            setTarefaAtual(tarefa);
+            setTituloAtual(tarefa.titulo || titulo);
+            setDescricaoAtual(tarefa.descricao || descricao);
+            setPrioridadeAtual(normalizarPrioridade(tarefa.prioridade));
+            setDataVencimentoAtual(tarefa.conclusaoPrazo || dataVencimento);
+            setResponsaveisAtual([tarefa.criador?.nome || 'Sem responsável']);
+        }
+    }, [tarefa, titulo, descricao, dataVencimento]);
+
+    // Função para normalizar prioridade
+    const normalizarPrioridade = (prio: string): 'baixa' | 'media' | 'alta' => {
+        const prioLower = prio?.toLowerCase() || 'baixa';
+        if (prioLower.includes('alta') || prioLower.includes('urgente')) return 'alta';
+        if (prioLower.includes('media') || prioLower.includes('médio')) return 'media';
+        return 'baixa';
+    };
+
+    const prioridadeNormalizada = normalizarPrioridade(prioridadeAtual);
+    const dataFormatada = formatarDataExibicao(dataVencimentoAtual);
 
     const handleExcluirClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -58,17 +89,27 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
         setEditarModalOpen(true);
     };
 
-    const handleEditSuccess = () => {
+    const handleEditSuccess = (tarefaAtualizada?: any) => {
         setEditarModalOpen(false);
+        // Atualizar o estado local com os dados da tarefa atualizada
+        if (tarefaAtualizada) {
+            setTarefaAtual(tarefaAtualizada);
+        }
         if (onEditSuccess) {
             onEditSuccess();
         }
     };
 
+    // Determinar cor da borda esquerda baseada no status
+    let corBordaCard = 'border-l-aguardando';
+    if (statusAtual === 'andamento') corBordaCard = 'border-l-andamento';
+    if (statusAtual === 'finalizado') corBordaCard = 'border-l-finalizado';
+    if (statusAtual === 'atrasada') corBordaCard = 'border-l-atrasada';
+
     return (
         <>
             <div 
-                className="w-full bg-white rounded-lg shadow-md flex flex-col border-2 border-default cursor-pointer overflow-hidden transition-all duration-300"
+                className={`w-full bg-white rounded-lg shadow-md flex flex-col ${corBordaCard} border-l-6 cursor-pointer overflow-hidden transition-all duration-300`}
                 onClick={toggleExpandir}
             >
                 <div className="p-3 sm:p-4 md:p-6 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-between items-start sm:items-center">
@@ -86,14 +127,14 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
                         <div className='flex-1 min-w-0'>
                             <div className='flex flex-row gap-2 mb-2 items-center flex-wrap'>
                                 <Status status={statusAtual} />
-                                <Prioridade prioridade={prioridade} />
+                                <Prioridade prioridade={prioridadeNormalizada} />
                             </div>
-                            <Titulo tamanho="text-sm sm:text-base md:text-lg">{titulo}</Titulo>
+                            <Titulo tamanho="text-sm sm:text-base md:text-lg">{tituloAtual}</Titulo>
                             <div className='flex flex-col sm:flex-row gap-1 sm:gap-3 md:gap-5 text-muted text-xs sm:text-xs md:text-sm'>
                                 <p style={corVencimento ? { color: corVencimento } : {}} className='truncate'>
-                                    Vence em: {dataVencimento} ({textoVencimento})
+                                    Vence em: {dataFormatada} ({textoVencimento})
                                 </p>
-                                <p className='truncate'>Responsável: {responsaveis.join(', ')}</p>
+                                <p className='truncate'>Responsável: {responsaveisAtual.join(', ')}</p>
                             </div>
                         </div>
                     </div>
@@ -125,8 +166,8 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
                 >
                     <div className="pt-3 sm:pt-4 border-t-2 border-default">
                         <h4 className="text-xs font-semibold text-muted uppercase mb-2">Descrição da Tarefa</h4>
-                        <p className="text-gray-600 text-xs sm:text-sm leading-relaxed w-full">
-                            {descricao}
+                        <p className="text-gray-600 text-xs sm:text-sm leading-relaxed break-words whitespace-pre-wrap">
+                            {descricaoAtual}
                         </p>
                     </div>
                 </div>
@@ -136,7 +177,7 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
             <ModalAlerta
                 isOpen={modalOpen}
                 titulo="Excluir Tarefa"
-                mensagem={`Tem certeza que deseja excluir a tarefa "${titulo}"? Esta ação não pode ser desfeita.`}
+                mensagem={`Tem certeza que deseja excluir a tarefa "${tituloAtual}"? Esta ação não pode ser desfeita.`}
                 botaoCancelar="Cancelar"
                 botaoConfirmar="Excluir"
                 tipo="erro"
@@ -145,11 +186,11 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
             />
 
             {/* Modal de editar tarefa */}
-            {tarefa && (
+            {tarefaAtual && (
                 <EditarTarefa
                     isOpen={editarModalOpen}
                     onClose={() => setEditarModalOpen(false)}
-                    tarefa={tarefa}
+                    tarefa={tarefaAtual}
                     onSuccess={handleEditSuccess}
                 />
             )}
