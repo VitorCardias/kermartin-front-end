@@ -40,13 +40,13 @@ const statusLabel = (status?: string) => {
 
 const DemandaDetalhes: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const state = location.state as DemandaDetalheState | null;
   const demanda = state?.demanda;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [etapaSelecionadaId, setEtapaSelecionadaId] = useState<string | null>(null);
+  const [etapaSelecionadaIds, setEtapaSelecionadaIds] = useState<Set<string>>(new Set());
   const { etapas, buscarEtapas } = useEtapas(id || "");
 
   const nomeCliente = demanda?.clienteDto?.nome || "Cliente não informado";
@@ -69,8 +69,29 @@ const DemandaDetalhes: React.FC = () => {
     buscarEtapas();
   };
 
-  const handleEtapaClick = (etapaId: string) => {
-    setEtapaSelecionadaId(etapaSelecionadaId === etapaId ? null : etapaId);
+  const handleEtapaClick = (etapaId: string, isMultiple: boolean) => {
+    setEtapaSelecionadaIds((prevIds) => {
+      const novoSet = new Set(prevIds);
+      
+      if (isMultiple) {
+        // Seleção múltipla com Ctrl/Cmd
+        if (novoSet.has(etapaId)) {
+          novoSet.delete(etapaId);
+        } else {
+          novoSet.add(etapaId);
+        }
+      } else {
+        // Seleção única (clique normal)
+        if (novoSet.has(etapaId)) {
+          novoSet.delete(etapaId);
+        } else {
+          novoSet.clear();
+          novoSet.add(etapaId);
+        }
+      }
+      
+      return novoSet;
+    });
   };
 
   return (
@@ -145,8 +166,8 @@ const DemandaDetalhes: React.FC = () => {
             <div>
               <p className="text-xs text-muted font-semibold uppercase">Tarefas de:</p>
               <p className="text-main text-md font-bold">
-                {etapaSelecionadaId
-                  ? etapas.find((e) => e.id === etapaSelecionadaId)?.titulo || "Coleta de Documentos"
+                {etapaSelecionadaIds
+                  ? etapas.find((e) => e.id === [...etapaSelecionadaIds][0])?.titulo || "Coleta de Documentos"
                   : "Coleta de Documentos"}
               </p>
             </div>
@@ -174,6 +195,12 @@ const DemandaDetalhes: React.FC = () => {
             </button>
           </div>
 
+          {etapaSelecionadaIds.size > 0 && (
+            <p className="text-xs text-blue font-semibold mt-2">
+              {etapaSelecionadaIds.size} etapa(s) selecionada(s)
+            </p>
+          )}
+
           <div className="mt-5 space-y-3">
             {etapas && etapas.length > 0 ? (
               etapas.map((etapa, indice) => (
@@ -181,7 +208,7 @@ const DemandaDetalhes: React.FC = () => {
                   key={etapa.id}
                   etapa={etapa}
                   indice={indice}
-                  isSelected={etapaSelecionadaId === etapa.id}
+                  isSelected={etapaSelecionadaIds.has(etapa.id)}
                   onClick={handleEtapaClick}
                   idDemanda={id || ""}
                   onEtapaAtualizada={handleModalSuccess}

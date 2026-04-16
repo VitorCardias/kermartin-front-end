@@ -21,7 +21,7 @@ type CardEtapaProps = {
   etapa: Etapa;
   indice: number;
   isSelected: boolean;
-  onClick: (etapaId: string) => void;
+  onClick: (etapaId: string, isMultiple: boolean) => void;
   idDemanda: string;
   onEtapaAtualizada?: () => void;
 };
@@ -43,6 +43,15 @@ const CardEtapa: React.FC<CardEtapaProps> = ({
   }>({ isOpen: false, titulo: "", mensagem: "", tipo: "aviso" });
 
   const { deletarEtapaDemanda, buscarEtapas } = useEtapas(idDemanda);
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Se clicou em um botão ou área sensível, não seleciona
+    if ((e.target as HTMLElement).closest("button")) {
+      return;
+    }
+    
+    onClick(etapa.id, true);
+  };
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -90,10 +99,33 @@ const CardEtapa: React.FC<CardEtapaProps> = ({
     }
   };
 
+  const formatarData = (data: string | null | undefined): string => {
+    if (!data) return "Sem prazo";
+    
+    try {
+      // Trata diferentes formatos de data
+      const date = new Date(data);
+      
+      // Verifica se a data é válida
+      if (isNaN(date.getTime())) {
+        return "Sem prazo";
+      }
+      
+      // Formata para dd/mm/yyyy
+      return date.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch (error) {
+      return "Sem prazo";
+    }
+  };
+
   return (
     <>
       <article
-        onClick={() => onClick(etapa.id)}
+        onClick={handleCardClick}
         className={`border rounded-xl p-4 cursor-pointer transition-all ${
           isSelected
             ? "border-blue border-2 shadow-md bg-blue/5"
@@ -110,7 +142,7 @@ const CardEtapa: React.FC<CardEtapaProps> = ({
             <p className="text-xs text-muted mt-1">
               Prazo:{" "}
               {etapa.conclusaoPrazo
-                ? new Date(etapa.conclusaoPrazo).toLocaleDateString("pt-BR")
+                ? formatarData(etapa.conclusaoPrazo)
                 : "Sem prazo"}
             </p>
           </div>
