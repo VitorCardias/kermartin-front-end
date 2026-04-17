@@ -32,6 +32,8 @@ export type CreateTarefaPayload = {
   demandaDTO?: { id: string } | null;
 };
 
+export type UpdateTarefaPayload = Omit<TarefaAPI, "id">;
+
 type TarefaContexto = "etapa" | "demanda" | "funcionario";
 
 export const useTarefa = () => {
@@ -111,7 +113,7 @@ export const useTarefa = () => {
   // Editar tarefa
   const editarTarefa = async (
     idTarefa: string,
-    tarefaEditada: Omit<TarefaAPI, "id" | "criador">
+    tarefaEditada: UpdateTarefaPayload
   ): Promise<void> => {
     try {
       await authApi.put("/tarefa-etapa", {

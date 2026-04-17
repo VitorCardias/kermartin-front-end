@@ -1,10 +1,16 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { type TarefaAPI } from "./useTarefa";
 
-export const useCardTarefa = (dataVencimento: string | null | undefined, responsaveis: string[], tarefa?: TarefaAPI) => {
+export const useCardTarefa = (
+  dataVencimento: string | null | undefined,
+  _responsaveis: string[],
+  tarefa?: TarefaAPI,
+  onStatusChange?: (novoStatus: string) => Promise<void>
+) => {
   const [expandido, setExpandido] = useState(false);
   const [checked, setChecked] = useState(false);
   const [animatingCheck, setAnimatingCheck] = useState(false);
+  const statusAntesDeFinalizar = useRef("RequerindoEquipe");
 
   // Parse de data igual ao CardDemanda
   const parseData = (valor?: string | null): Date | null => {
@@ -94,6 +100,23 @@ export const useCardTarefa = (dataVencimento: string | null | undefined, respons
     }
   };
 
+  const statusEhFinalizado = (status?: string | null): boolean => {
+    if (!status) return false;
+    const statusNormalizado = status.toLowerCase();
+    return statusNormalizado.includes("finalizada") || statusNormalizado.includes("finalizado");
+  };
+
+  useEffect(() => {
+    const statusAtual = tarefa?.status || "";
+    const estaFinalizada = statusEhFinalizado(statusAtual);
+
+    setChecked(estaFinalizada);
+
+    if (!estaFinalizada && statusAtual) {
+      statusAntesDeFinalizar.current = statusAtual;
+    }
+  }, [tarefa?.id, tarefa?.status]);
+
   // Determinar status baseado no status da tarefa ou dias de vencimento
   const obterStatus = (): 'aguardando' | 'andamento' | 'finalizado' | 'atrasada' => {
     if (checked) return 'finalizado';
@@ -101,22 +124,25 @@ export const useCardTarefa = (dataVencimento: string | null | undefined, respons
     // Se a tarefa tiver status, usar ele
     if (tarefa?.status) {
       const statusBruto = tarefa.status.toLowerCase();
-      if (statusBruto.includes('finalizada') || statusBruto.includes('finalizada')) return 'finalizado';
-      if (statusBruto.includes('atrasada') || statusBruto.includes('atrasada')) return 'atrasada';
+      if (statusBruto.includes('finalizada') || statusBruto.includes('finalizado')) return 'finalizado';
+      if (statusBruto.includes('atrasada') || statusBruto.includes('atrasado')) return 'atrasada';
       if (statusBruto.includes('andamento')) return 'andamento';
       if (statusBruto.includes('aguardando')) return 'aguardando';
+      if (statusBruto.includes('requerindo')) return 'aguardando';
     }
 
-    // Caso contrário, calcular pelo vencimento
-    if (diasVencimento < 0) return 'atrasada';
-    if (diasVencimento <= 3) return 'andamento';
     return 'aguardando';
   };
 
   // Determinar cor e texto de vencimento
   const obterTextoVencimento = (): { texto: string; cor: string } => {
+
+    const status = obterStatus();
+    if (status === 'finalizado') {
+      return { texto: 'Finalizada', cor: '#4CAF50' };
+    }
     if (diasVencimento < 0) {
-      return { texto: `${Math.abs(diasVencimento)} dias atrasado`, cor: '#EF4444' };
+      return { texto: `Vencido`, cor: '#EF4444' };
     }
     if (diasVencimento === 0) {
       return { texto: 'Hoje', cor: '#F59E0B' };
@@ -136,16 +162,34 @@ export const useCardTarefa = (dataVencimento: string | null | undefined, respons
     setExpandido(!expandido);
   };
 
-  const toggleChecked = () => {
+  const toggleChecked = (valor: boolean) => {
     setAnimatingCheck(true);
-    setChecked(!checked);
+    setChecked(valor);
     setTimeout(() => {
       setAnimatingCheck(false);
     }, 600);
   };
 
-  const toggleFinalizada = () => {
-    // Lógica para marcar como finalizada no backend, se necessário
+  const toggleFinalizada = async () => {
+    const novoChecked = !checked;
+    const statusAtual = tarefa?.status;
+
+    if (!novoChecked && statusAtual && !statusEhFinalizado(statusAtual)) {
+      statusAntesDeFinalizar.current = statusAtual;
+    }
+
+    const novoStatus = novoChecked ? "Finalizada" : statusAntesDeFinalizar.current || "RequerindoEquipe";
+
+    toggleChecked(novoChecked);
+
+    if (!onStatusChange) return;
+
+    try {
+      await onStatusChange(novoStatus);
+    } catch (error) {
+      setChecked(!novoChecked);
+      throw error;
+    }
   };
 
   return {

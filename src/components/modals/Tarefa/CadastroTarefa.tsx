@@ -6,7 +6,6 @@ import { useEtapas } from '../../../Hooks/useEtapas';
 import { useDemandas } from '../../../Hooks/useDemandas';
 import {
   PrioridadeTarefa,
-  StatusTarefaTipo,
   converterDataTimeLocalParaAPI,
 } from '../../../types/TiposTarefas';
 
@@ -33,7 +32,7 @@ const CadastroTarefa: React.FC<CadastroTarefaModalProps> = ({
     titulo: '',
     descricao: '',
     prioridade: 'Media' as const,
-    status: 'Pendente' as const,
+    status: 'RequerindoEquipe' as const,
     inicioPrazo: '',
     conclusaoPrazo: '',
     demandaId: demandaIdPadrao || '',
@@ -128,7 +127,7 @@ const CadastroTarefa: React.FC<CadastroTarefaModalProps> = ({
             titulo: '',
             descricao: '',
             prioridade: 'Media',
-            status: 'Pendente',
+            status: 'RequerindoEquipe',
             inicioPrazo: '',
             conclusaoPrazo: '',
             demandaId: demandaIdPadrao || '',
@@ -239,22 +238,6 @@ const CadastroTarefa: React.FC<CadastroTarefaModalProps> = ({
 
           {/* Status e Etapa */}
           <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-primary font-medium text-sm mb-2">Status</label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              >
-                {StatusTarefaTipo.map((s) => (
-                  <option key={s} value={s}>
-                    {s === 'Finalizada' ? 'Finalizada' : s === 'EmAndamento' ? 'Em Andamento' : s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             {/* Etapa */}
             {etapas && etapas.length > 0 && (
               <div>

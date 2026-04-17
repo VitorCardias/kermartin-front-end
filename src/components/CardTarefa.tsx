@@ -20,17 +20,20 @@ interface CardTarefaProps {
     descricao?: string;
     onDelete?: () => void;
     onEditSuccess?: () => void;
+    onStatusChange?: (tarefaId: string, novoStatus: string) => Promise<void>;
+
 }
 
 const CardTarefa: React.FC<CardTarefaProps> = ({
     tarefa,
-    titulo = "Solicitar Extrato Analítico",
-    prioridade = "baixa",
-    dataVencimento = "21/03/2026",
-    responsaveis = ['João Silva', 'Maria Oliveira'],
+    titulo = "",
+    prioridade = "",
+    dataVencimento = "",
+    responsaveis = [],
     descricao = "Sem descrição",
     onDelete,
     onEditSuccess,
+    onStatusChange,
 }) => {
     // Usar dados da tarefa se disponível, caso contrário usar props
     const [tarefaAtual, setTarefaAtual] = useState<TarefaAPI | undefined>(tarefa);
@@ -40,10 +43,24 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
     const [dataVencimentoAtual, setDataVencimentoAtual] = useState(dataVencimento);
     const [responsaveisAtual, setResponsaveisAtual] = useState(responsaveis);
 
+    const handleStatusChange = async (novoStatus: string) => {
+        if (!tarefaAtual?.id || !onStatusChange) return;
+
+        await onStatusChange(tarefaAtual.id, novoStatus);
+
+        setTarefaAtual((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                status: novoStatus,
+            };
+        });
+    };
+
     const { 
         expandido, checked, animatingCheck, textoVencimento, corVencimento,
-        obterStatus, toggleExpandir, toggleChecked, toggleFinalizada, formatarDataExibicao
-    } = useCardTarefa(dataVencimentoAtual, responsaveisAtual, tarefaAtual);
+        obterStatus, toggleExpandir, toggleFinalizada, formatarDataExibicao
+    } = useCardTarefa(dataVencimentoAtual, responsaveisAtual, tarefaAtual, handleStatusChange);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editarModalOpen, setEditarModalOpen] = useState(false);
@@ -64,8 +81,8 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
     // Função para normalizar prioridade
     const normalizarPrioridade = (prio: string): 'baixa' | 'media' | 'alta' => {
         const prioLower = prio?.toLowerCase() || 'baixa';
-        if (prioLower.includes('alta') || prioLower.includes('urgente')) return 'alta';
-        if (prioLower.includes('media') || prioLower.includes('médio')) return 'media';
+        if (prioLower.includes('alta')) return 'alta';
+        if (prioLower.includes('media')) return 'media';
         return 'baixa';
     };
 
@@ -100,16 +117,10 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
         }
     };
 
-    // Determinar cor da borda esquerda baseada no status
-    let corBordaCard = 'border-l-aguardando';
-    if (statusAtual === 'andamento') corBordaCard = 'border-l-andamento';
-    if (statusAtual === 'finalizado') corBordaCard = 'border-l-finalizado';
-    if (statusAtual === 'atrasada') corBordaCard = 'border-l-atrasada';
-
     return (
         <>
             <div 
-                className={`w-full bg-white rounded-lg shadow-md flex flex-col ${corBordaCard} border-l-6 cursor-pointer overflow-hidden transition-all duration-300`}
+                className={`w-full bg-white rounded-lg shadow-md flex flex-col cursor-pointer overflow-hidden transition-all duration-300`}
                 onClick={toggleExpandir}
             >
                 <div className="p-3 sm:p-4 md:p-6 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-between items-start sm:items-center">
@@ -118,10 +129,13 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
                             src={`${checked ? `${checkBox}` : `${uncheckBox}`}`} 
                             alt="Tarefa" 
                             className={`mr-1 w-6 sm:w-7 md:w-9 shrink-0 ${animatingCheck ? 'animate-check' : ''}`}
-                            onClick={(e) => { 
+                            onClick={async (e) => { 
                                 e.stopPropagation(); 
-                                toggleChecked();
-                                toggleFinalizada();
+                                try {
+                                    await toggleFinalizada();
+                                } catch (error) {
+                                    console.error('Erro ao atualizar status da tarefa:', error);
+                                }
                             }}
                         />
                         <div className='flex-1 min-w-0'>
@@ -131,7 +145,7 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
                             </div>
                             <Titulo tamanho="text-sm sm:text-base md:text-lg">{tituloAtual}</Titulo>
                             <div className='flex flex-col sm:flex-row gap-1 sm:gap-3 md:gap-5 text-muted text-xs sm:text-xs md:text-sm'>
-                                <p style={corVencimento ? { color: corVencimento } : {}} className='truncate'>
+                                <p style={corVencimento ? { color: corVencimento } : {}} className='text-status-completed'>
                                     Vence em: {dataFormatada} ({textoVencimento})
                                 </p>
                                 <p className='truncate'>Responsável: {responsaveisAtual.join(', ')}</p>

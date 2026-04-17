@@ -51,7 +51,7 @@ const DemandaDetalhes: React.FC = () => {
   const [etapaSelecionadaIds, setEtapaSelecionadaIds] = useState<Set<string>>(new Set());
   
   const { etapas, buscarEtapas } = useEtapas(id || "");
-  const { tarefas, buscarTarefas, formatarDataExibicao, loading: loadingTarefas, deletarTarefa } = useTarefa();
+  const { tarefas, buscarTarefas, formatarDataExibicao, loading: loadingTarefas, deletarTarefa, editarTarefa } = useTarefa();
 
   const nomeCliente = demanda?.clienteDto?.nome || "Cliente não informado";
   const tituloDemanda = demanda?.titulo || "Demanda";
@@ -124,6 +124,28 @@ const DemandaDetalhes: React.FC = () => {
       }
     } catch (error) {
       console.error("Erro ao deletar tarefa:", error);
+    }
+  };
+
+  const handleStatusChange = async (tarefaId: string, novoStatus: string) => {
+    const tarefaSelecionada = tarefas.find((tarefa) => tarefa.id === tarefaId);
+    if (!tarefaSelecionada) return;
+
+    await editarTarefa(tarefaId, {
+      titulo: tarefaSelecionada.titulo,
+      descricao: tarefaSelecionada.descricao ?? null,
+      prioridade: tarefaSelecionada.prioridade,
+      status: novoStatus,
+      porcentagemConclusao: tarefaSelecionada.porcentagemConclusao,
+      inicioPrazo: tarefaSelecionada.inicioPrazo ?? null,
+      conclusaoPrazo: tarefaSelecionada.conclusaoPrazo ?? null,
+      etapaDemandaDTO: tarefaSelecionada.etapaDemandaDTO ?? null,
+      demandaDTO: tarefaSelecionada.demandaDTO ?? null,
+      criador: tarefaSelecionada.criador,
+    });
+
+    if (id) {
+      await buscarTarefas("demanda", id);
     }
   };
 
@@ -244,6 +266,7 @@ const DemandaDetalhes: React.FC = () => {
                   responsaveis={[tarefa.criador?.nome || "Sem responsável"]}
                   onDelete={() => handleDeleteTarefa(tarefa.id)}
                   onEditSuccess={() => handleModalSuccess()}
+                  onStatusChange={handleStatusChange}
                 />
               ))
             ) : (

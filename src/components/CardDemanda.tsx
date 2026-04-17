@@ -106,18 +106,18 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
         const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
         if (diffDias < 0) {
-            return { texto: `${Math.abs(diffDias)} dias atrasado`, cor: '#EF4444' };
+            return { texto: `Vencido`, cor: '#EF4444' };
         }
         if (diffDias === 0) {
-            return { texto: 'Vence hoje', cor: '#F59E0B' };
+            return { texto: 'Hoje', cor: '#F59E0B' };
         }
         if (diffDias === 1) {
-            return { texto: 'Vence amanhã', cor: '#F59E0B' };
+            return { texto: 'Amanhã', cor: '#F59E0B' };
         }
         if (diffDias <= 3) {
             return { texto: `${diffDias} dias`, cor: '#F59E0B' };
         }
-        return { texto: `${diffDias} dias`, cor: '#10B981' };
+        return { texto: `${diffDias} dias`, cor: '#64748b' };
     }, [dataVencimento]);
 
     // Formatar data para exibição
@@ -206,7 +206,7 @@ const CardDemanda: React.FC<CardDemandaProps> = ({
                             </div>
                             <Titulo tamanho="text-sm sm:text-base md:text-lg">{titulo} - {cliente}</Titulo>
                             <div className='flex flex-col sm:flex-row gap-1 sm:gap-3 md:gap-5 text-muted text-xs sm:text-xs md:text-sm'>
-                                <p style={statusParaComponente === 'finalizado' ? {} : { color: vencimentoInfo.cor }} className='truncate'>
+                                <p style={statusParaComponente === 'finalizado' ? {} : { color: vencimentoInfo.cor }} className='text-status-completed'>
                                     Vence em: {formatarDataExibicao(dataVencimento)} ({statusParaComponente === 'finalizado' ? 'Finalizada' : vencimentoInfo.texto})
                                 </p>
                                 <p className='truncate'>
