@@ -3,6 +3,7 @@ import Titulo from "../../Titulo";
 import AlertModal from "../AlertModal";
 import { usePerfil } from "../../../Hooks/usePerfil";
 import { useEtapas } from "../../../Hooks/useEtapas";
+import { authApi } from "../../../api/AuthService";
 import { PrioridadeDemanda, StatusDemanda, formatarDisplayPrioridade, formatarDisplayStatusDemanda } from "../../../types/TiposDemandas";
 
 type CadastroEtapaModalProps = {
@@ -35,6 +36,69 @@ const CadastroEtapa: React.FC<CadastroEtapaModalProps> = ({ isOpen, idDemanda, o
   }>({ isOpen: false, titulo: "", mensagem: "", tipo: "aviso" });
 
   const [loading, setLoading] = useState(false);
+
+  const obterDataAtualFormato = () => {
+    const agora = new Date();
+    const dia = String(agora.getDate()).padStart(2, "0");
+    const mes = String(agora.getMonth() + 1).padStart(2, "0");
+    const ano = agora.getFullYear();
+    const horas = String(agora.getHours()).padStart(2, "0");
+    const minutos = String(agora.getMinutes()).padStart(2, "0");
+    const segundos = String(agora.getSeconds()).padStart(2, "0");
+    return `${dia}-${mes}-${ano} ${horas}:${minutos}:${segundos}`;
+  };
+
+  const herdarEquipeDemandaNaEtapa = async (idDemandaCriada: string, idEtapaCriada: string) => {
+    try {
+      const equipeResponse = await authApi.get(`/membro-equipe-demanda/listar-todos-por-demanda/${idDemandaCriada}`, {
+        params: { page: 0, size: 200 },
+      });
+
+      const membrosEquipe = Array.isArray(equipeResponse.data)
+        ? equipeResponse.data
+        : Array.isArray(equipeResponse.data?.content)
+          ? equipeResponse.data.content
+          : [];
+
+      if (membrosEquipe.length === 0) return;
+
+      const promessas = membrosEquipe.map(async (membro: any) => {
+        const idFuncionario = membro?.funcionarioDTO?.id;
+        if (!idFuncionario) return;
+
+        const payloads = [
+          {
+            etapaDemandaDTO: { id: idEtapaCriada },
+            funcionarioDTO: { id: idFuncionario },
+            inicioParticipacao: obterDataAtualFormato(),
+          },
+          {
+            etapaDTO: { id: idEtapaCriada },
+            funcionarioDTO: { id: idFuncionario },
+            inicioParticipacao: obterDataAtualFormato(),
+          },
+          {
+            etapaDemandaDTO: { id: idEtapaCriada },
+            funcionarioDTO: { id: idFuncionario },
+            inicioParticipacao: new Date().toISOString(),
+          },
+        ];
+
+        for (const payload of payloads) {
+          try {
+            await authApi.post("/membro-equipe-etapa", payload);
+            return;
+          } catch {
+            // tenta proximo formato
+          }
+        }
+      });
+
+      await Promise.all(promessas);
+    } catch {
+      // Nao interrompe criacao da etapa se heranca de equipe falhar.
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -102,6 +166,10 @@ const CadastroEtapa: React.FC<CadastroEtapaModalProps> = ({ isOpen, idDemanda, o
       const resultado = await cadastrarEtapa(etapaPayload);
 
       if (resultado) {
+        if (resultado.id) {
+          await herdarEquipeDemandaNaEtapa(idDemanda, resultado.id);
+        }
+
         setAlert({
           isOpen: true,
           titulo: "Sucesso",

@@ -9,6 +9,7 @@ import ModalAlerta from './modals/AlertModal';
 import EditarTarefa from './modals/Tarefa/EditarTarefa';
 import { useCardTarefa } from '../Hooks/useCardTarefa';
 import { type TarefaAPI } from '../Hooks/useTarefa';
+import { useEquipeTarefa } from '../Hooks/useEquipeTarefa';
 
 interface CardTarefaProps {
     tarefa?: TarefaAPI;
@@ -42,6 +43,7 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
     const [prioridadeAtual, setPrioridadeAtual] = useState(prioridade);
     const [dataVencimentoAtual, setDataVencimentoAtual] = useState(dataVencimento);
     const [responsaveisAtual, setResponsaveisAtual] = useState(responsaveis);
+    const { membrosEquipe } = useEquipeTarefa(tarefaAtual?.id || "");
 
     const handleStatusChange = async (novoStatus: string) => {
         if (!tarefaAtual?.id || !onStatusChange) return;
@@ -88,6 +90,8 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
 
     const prioridadeNormalizada = normalizarPrioridade(prioridadeAtual);
     const dataFormatada = formatarDataExibicao(dataVencimentoAtual);
+    const nomesEquipe = membrosEquipe?.map((m) => m.funcionarioDTO.nomeCompleto) || [];
+    const responsaveisExibicao = nomesEquipe.length > 0 ? nomesEquipe : responsaveisAtual;
 
     const handleExcluirClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -148,7 +152,7 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
                                 <p style={corVencimento ? { color: corVencimento } : {}} className='text-status-completed'>
                                     Vence em: {dataFormatada} ({textoVencimento})
                                 </p>
-                                <p className='truncate'>Responsável: {responsaveisAtual.join(', ')}</p>
+                                <p className='truncate'>Responsável: {responsaveisExibicao.join(', ')}</p>
                             </div>
                         </div>
                     </div>
@@ -213,3 +217,4 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
 }
 
 export default CardTarefa;
+

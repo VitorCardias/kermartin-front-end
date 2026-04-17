@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Titulo from "../components/Titulo";
 import CardDemanda from "../components/CardDemanda";
 import CadastroDemanda from "../components/modals/Demanda/CadastroDemanda";
@@ -9,6 +10,7 @@ import { useDemandas, type FiltrosDemandaAvancados } from "../Hooks/useDemandas"
 import StatusFiltro from "../components/StatusFiltro";
 
 const Demandas: React.FC = () => {
+  const location = useLocation();
   const {
     demandas,
     loading,
@@ -26,10 +28,24 @@ const Demandas: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [demandaSelecionada, setDemandaSelecionada] = useState<any>(null);
   const [demandasLocais, setDemandasLocais] = useState(demandas);
+  const [filtroInicialAplicado, setFiltroInicialAplicado] = useState(false);
 
   React.useEffect(() => {
     setDemandasLocais(demandas);
   }, [demandas]);
+
+  React.useEffect(() => {
+    if (filtroInicialAplicado) return;
+
+    const filtroInicial = (location.state as any)?.filtroInicial as Partial<FiltrosDemandaAvancados> | undefined;
+    if (!filtroInicial) {
+      setFiltroInicialAplicado(true);
+      return;
+    }
+
+    atualizarFiltrosAvancados(filtroInicial);
+    setFiltroInicialAplicado(true);
+  }, [location.state, filtroInicialAplicado, atualizarFiltrosAvancados]);
 
   const mapearStatusParaDisplay = (status: string): 'aguardando' | 'andamento' | 'finalizado' | 'atrasada' => {
     const mapa: Record<string, 'aguardando' | 'andamento' | 'finalizado' | 'atrasada'> = {

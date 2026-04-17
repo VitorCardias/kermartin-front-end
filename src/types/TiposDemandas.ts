@@ -100,7 +100,7 @@ export function formatarDisplayPrioridade<PrioridadeDemanda>(prioridade: Priorid
   return displayAmigavel;
 }
 
-export const StatusDemanda = ["Finalizada", "EmAndamento", "RequerindoEquipe", "Cancelada", "Atrasada"] as const;
+export const StatusDemanda = ["Finalizada", "EmAndamento", "RequerindoEquipe", "Atrasada"] as const;
 export type StatusDemandaTipo = (typeof StatusDemanda)[number];
 export function formatarDisplayStatusDemanda<StatusDemanda>(statusDemanda: StatusDemanda): string {
   let displayAmigavel = "";
@@ -114,9 +114,6 @@ export function formatarDisplayStatusDemanda<StatusDemanda>(statusDemanda: Statu
       break;
     case 'RequerindoEquipe':
       displayAmigavel = "Aguardando por Equipe";
-      break;
-    case 'Cancelada':
-      displayAmigavel = "Cancelada";
       break;
     case 'Atrasada':
       displayAmigavel = "Atrasada";

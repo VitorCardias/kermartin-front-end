@@ -1,7 +1,7 @@
 export const PrioridadeTarefa = ["Baixa", "Media", "Alta"] as const;
 export type PrioridadeTarefaTipo = (typeof PrioridadeTarefa)[number];
 
-export const StatusTarefaTipo = ["Finalizada", "EmAndamento", "RequerindoEquipe", "Cancelada", "Atrasada"] as const;
+export const StatusTarefaTipo = ["Finalizada", "EmAndamento", "RequerindoEquipe", "Atrasada"] as const;
 export type StatusTarefaTipo = (typeof StatusTarefaTipo)[number];
 
 export function formatarDisplayPrioridade(prioridade: PrioridadeTarefaTipo): string {
@@ -25,8 +25,6 @@ export function formatarDisplayStatus(status: StatusTarefaTipo): string {
       return 'Em Andamento';
     case 'RequerindoEquipe':
       return 'Requerindo Equipe';
-    case 'Cancelada':
-      return 'Cancelada';
     case 'Atrasada':
       return 'Atrasada';
     default:

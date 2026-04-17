@@ -80,20 +80,6 @@ const parseDataDemanda = (valor?: string | null): Date | null => {
 
 export const useDemandas = () => {
   const perfil = usePerfil();
-  const demandaTemFuncionarioSelecionado = (demanda: DemandaAPI, funcionariosIds: string[]) => {
-    const idsResponsaveis = (demanda.responsavelList || []).flatMap((responsavel) => [
-      responsavel.id,
-      responsavel.funcionarioId,
-      responsavel.funcionarioDTO?.id,
-    ]).filter(Boolean) as string[];
-
-    if (idsResponsaveis.length > 0) {
-      return funcionariosIds.some((id) => idsResponsaveis.includes(id));
-    }
-
-    return funcionariosIds.includes(demanda.criador.id);
-  };
-
   const buscarDemandasFn = useCallback(
     async (pagina: number, filtros: FiltrosListagem, limite: number): Promise<ResultadoBusca<Demanda>> => {
       try {
@@ -139,9 +125,55 @@ export const useDemandas = () => {
         }
 
         if (filtrosDemanda.funcionariosIds && filtrosDemanda.funcionariosIds.length > 0) {
-          demandasFiltradas = demandasFiltradas.filter((d) =>
-            demandaTemFuncionarioSelecionado(d, filtrosDemanda.funcionariosIds!)
+          const funcionariosSelecionados = filtrosDemanda.funcionariosIds!;
+
+          const demandasComEquipe = await Promise.all(
+            demandasFiltradas.map(async (demanda) => {
+              const idsRelacionados = new Set<string>();
+
+              const idsResponsaveis = (demanda.responsavelList || [])
+                .flatMap((responsavel) => [
+                  responsavel.id,
+                  responsavel.funcionarioId,
+                  responsavel.funcionarioDTO?.id,
+                ])
+                .filter(Boolean) as string[];
+
+              idsResponsaveis.forEach((id) => idsRelacionados.add(id));
+
+              // Se a API de demanda nao trouxer responsavelList completo, consulta a equipe da demanda.
+              if (idsRelacionados.size === 0) {
+                try {
+                  const equipeResponse = await authApi.get(
+                    `/membro-equipe-demanda/listar-todos-por-demanda/${demanda.id}`,
+                    { params: { page: 0, size: 100 } }
+                  );
+
+                  const membrosEquipe = Array.isArray(equipeResponse.data)
+                    ? equipeResponse.data
+                    : Array.isArray(equipeResponse.data?.content)
+                      ? equipeResponse.data.content
+                      : [];
+
+                  membrosEquipe.forEach((membro: any) => {
+                    const idFuncionario = membro?.funcionarioDTO?.id;
+                    if (idFuncionario) idsRelacionados.add(idFuncionario);
+                  });
+                } catch {
+                  // Se falhar consulta da equipe, mantem fallback local.
+                }
+              }
+
+              return {
+                demanda,
+                possuiFuncionarioSelecionado: funcionariosSelecionados.some((id) => idsRelacionados.has(id)),
+              };
+            })
           );
+
+          demandasFiltradas = demandasComEquipe
+            .filter((item) => item.possuiFuncionarioSelecionado)
+            .map((item) => item.demanda);
         }
 
         const hoje = new Date();

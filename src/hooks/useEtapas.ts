@@ -59,7 +59,7 @@ export const useEtapas = (idDemanda: string) => {
     }
   }, [idDemanda, paginaAtual, itensPorPagina]);
 
-  const cadastrarEtapa = async (etapaPayload: any): Promise<boolean> => {
+  const cadastrarEtapa = async (etapaPayload: any): Promise<EtapaAPI | null> => {
     try {
       const formatarDataParaAPI = (dateTimeStr: string | null): string | null => {
         if (!dateTimeStr) return null;
@@ -82,7 +82,7 @@ export const useEtapas = (idDemanda: string) => {
 
       console.log("Enviando etapa formatada:", etapaFormatada);
 
-      const response = await authApi.post("/etapa-demanda", etapaFormatada);
+      const response = await authApi.post<EtapaAPI>("/etapa-demanda", etapaFormatada);
       
       console.log("Resposta do cadastro:", response);
 
@@ -91,7 +91,7 @@ export const useEtapas = (idDemanda: string) => {
         buscarEtapas();
       }, 500);
 
-      return true;
+      return response.data || null;
     } catch (error) {
       console.error("Erro ao cadastrar etapa:", error);
       throw error; // Propaga o erro para o modal tratar

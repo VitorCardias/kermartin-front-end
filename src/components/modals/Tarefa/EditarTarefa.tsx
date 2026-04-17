@@ -4,6 +4,9 @@ import AlertModal from '../AlertModal';
 import { useTarefa, type TarefaAPI } from '../../../Hooks/useTarefa';
 import { useEtapas } from '../../../Hooks/useEtapas';
 import { useDemandas } from '../../../Hooks/useDemandas';
+import { useFuncionarios } from '../../../Hooks/useFuncionarios';
+import { useEquipeTarefa } from '../../../Hooks/useEquipeTarefa';
+import { authApi } from '../../../api/AuthService';
 import {
   PrioridadeTarefa,
   StatusTarefaTipo,
@@ -19,17 +22,39 @@ type EditarTarefaProps = {
   onSuccess?: (tarefaAtualizada?: any, acao?: 'editar' | 'excluir') => void;
 };
 
+type MembroFila = {
+  funcionarioId: string;
+  nome: string;
+  vinculoId?: string;
+  status: 'ativo' | 'novo' | 'remover';
+};
+
+type FormDataTarefa = {
+  id: string;
+  titulo: string;
+  descricao: string;
+  prioridade: string;
+  status: string;
+  inicioPrazo: string;
+  conclusaoPrazo: string;
+  porcentagemConclusao: number;
+  etapaDemandaDTO: { id: string } | any;
+  demandaDTO: { id: string } | any;
+};
+
 const EditarTarefa: React.FC<EditarTarefaProps> = ({ isOpen, onClose, tarefa, onSuccess }) => {
   const { editarTarefa, deletarTarefa } = useTarefa();
   const { etapas } = useEtapas(tarefa?.demandaDTO?.id || '');
   const { demandas } = useDemandas();
+  const { funcionarios } = useFuncionarios();
+  const { membrosEquipe } = useEquipeTarefa(tarefa?.id || '');
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormDataTarefa>({
     id: '',
     titulo: '',
     descricao: '',
-    prioridade: 'Media' as const,
-    status: 'Pendente' as const,
+    prioridade: 'Media',
+    status: 'RequerindoEquipe',
     inicioPrazo: '',
     conclusaoPrazo: '',
     porcentagemConclusao: 0,
@@ -47,6 +72,7 @@ const EditarTarefa: React.FC<EditarTarefaProps> = ({ isOpen, onClose, tarefa, on
 
   const [loading, setLoading] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [membrosForm, setMembrosForm] = useState<MembroFila[]>([]);
 
   // Carregar dados da tarefa ao abrir o modal
   useEffect(() => {
@@ -65,6 +91,48 @@ const EditarTarefa: React.FC<EditarTarefaProps> = ({ isOpen, onClose, tarefa, on
       });
     }
   }, [isOpen, tarefa]);
+
+  useEffect(() => {
+    if (membrosEquipe && membrosEquipe.length > 0) {
+      const equipeFormatada: MembroFila[] = membrosEquipe.map((m) => ({
+        vinculoId: m.id,
+        funcionarioId: m.funcionarioDTO.id,
+        nome: m.funcionarioDTO.nomeCompleto,
+        status: 'ativo',
+      }));
+      setMembrosForm(equipeFormatada);
+    } else {
+      setMembrosForm([]);
+    }
+  }, [membrosEquipe]);
+
+  useEffect(() => {
+    setFormData((prev) => {
+      if (prev.status === 'Finalizada' || prev.status === 'Cancelada') {
+        return prev;
+      }
+
+      const membrosAtivos = membrosForm.filter((m) => m.status !== 'remover').length;
+      const dataAtual = new Date();
+      const estaAtrasado = prev.conclusaoPrazo ? dataAtual > new Date(prev.conclusaoPrazo) : false;
+
+      let novoStatus = prev.status;
+
+      if (estaAtrasado) {
+        novoStatus = 'Atrasada';
+      } else if (membrosAtivos > 0) {
+        novoStatus = 'EmAndamento';
+      } else {
+        novoStatus = 'RequerindoEquipe';
+      }
+
+      if (novoStatus !== prev.status) {
+        return { ...prev, status: novoStatus as any };
+      }
+
+      return prev;
+    });
+  }, [membrosForm, formData.conclusaoPrazo]);
 
   if (!isOpen) return null;
 
@@ -89,12 +157,74 @@ const EditarTarefa: React.FC<EditarTarefaProps> = ({ isOpen, onClose, tarefa, on
         ...formData,
         etapaDemandaDTO: value ? { id: value } : { id: '' },
       });
+    } else if (name === 'responsavelId') {
+      const func = funcionarios?.find((f) => f.id === value);
+      if (func) {
+        setMembrosForm((prev) => {
+          const existe = prev.find((m) => m.funcionarioId === func.id);
+          if (existe) {
+            if (existe.status === 'remover') {
+              return prev.map((m) =>
+                m.funcionarioId === func.id ? { ...m, status: m.vinculoId ? 'ativo' : 'novo' } : m
+              );
+            }
+            return prev;
+          }
+
+          return [...prev, { funcionarioId: func.id, nome: func.nomeCompleto, status: 'novo' }];
+        });
+      }
     } else {
       setFormData({
         ...formData,
         [name]: value,
       });
     }
+  };
+
+  const removeResponsavel = (funcionarioId: string) => {
+    setMembrosForm((prev) =>
+      prev.map((m) => (m.funcionarioId === funcionarioId ? { ...m, status: 'remover' } : m))
+    );
+  };
+
+  const adicionarMembroEquipeTarefa = async (idTarefa: string, idFuncionario: string) => {
+    const payloads = [
+      {
+        tarefaDTO: { id: idTarefa },
+        funcionarioDTO: { id: idFuncionario },
+        status: formData.status,
+      },
+      {
+        tarefaDTO: { id: idTarefa },
+        funcionarioDTO: { id: idFuncionario },
+      },
+      {
+        tarefaEtapaDTO: { id: idTarefa },
+        funcionarioDTO: { id: idFuncionario },
+        status: formData.status,
+      },
+      {
+        tarefaEtapaDTO: { id: idTarefa },
+        funcionarioDTO: { id: idFuncionario },
+      },
+    ];
+
+    let ultimoErro: any = null;
+
+    for (const payload of payloads) {
+      try {
+        await authApi.post("/membro-equipe-tarefa", payload);
+        return true;
+      } catch (error: any) {
+        if (error?.response?.status === 409) {
+          return true;
+        }
+        ultimoErro = error;
+      }
+    }
+
+    throw ultimoErro;
   };
 
   const validateForm = (): string | null => {
@@ -144,6 +274,21 @@ const EditarTarefa: React.FC<EditarTarefaProps> = ({ isOpen, onClose, tarefa, on
 
       await editarTarefa(formData.id, tarefaPayload as any);
 
+      const promessasEquipe = membrosForm.map(async (m) => {
+        if (m.status === 'novo') {
+          await adicionarMembroEquipeTarefa(formData.id, m.funcionarioId);
+          return;
+        }
+
+        if (m.status === 'remover' && m.vinculoId) {
+          return authApi.delete(`/membro-equipe-tarefa/${m.vinculoId}`);
+        }
+
+        return Promise.resolve();
+      });
+
+      await Promise.all(promessasEquipe);
+
       setAlert({
         isOpen: true,
         titulo: 'Sucesso',
@@ -154,12 +299,23 @@ const EditarTarefa: React.FC<EditarTarefaProps> = ({ isOpen, onClose, tarefa, on
           onClose();
         },
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao editar tarefa:', error);
+      const erroBruto =
+        error?.response?.data && typeof error.response.data === 'object'
+          ? JSON.stringify(error.response.data)
+          : undefined;
+      const mensagemErroApi =
+        (typeof error?.response?.data === 'string' ? error.response.data : undefined) ||
+        error?.response?.data?.message ||
+        error?.response?.data?.mensagem ||
+        error?.response?.data?.error ||
+        erroBruto ||
+        'Erro ao editar tarefa. Tente novamente.';
       setAlert({
         isOpen: true,
         titulo: 'Erro',
-        mensagem: 'Erro ao editar tarefa. Tente novamente.',
+        mensagem: mensagemErroApi,
         tipo: 'erro',
       });
     } finally {
@@ -196,6 +352,7 @@ const EditarTarefa: React.FC<EditarTarefaProps> = ({ isOpen, onClose, tarefa, on
   };
 
   const statusColors = obterCorStatus(formData.status as any);
+  const membrosVisiveis = membrosForm.filter((m) => m.status !== 'remover');
 
   return (
     <div className="fixed inset-0 bg-gray-500/60 flex items-center justify-center z-50 p-4">
@@ -286,6 +443,47 @@ const EditarTarefa: React.FC<EditarTarefaProps> = ({ isOpen, onClose, tarefa, on
                   </select>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-muted font-medium text-xs mb-2 uppercase">
+                  Adicionar a Equipe
+                </label>
+                <select
+                  name="responsavelId"
+                  value=""
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md cursor-pointer"
+                >
+                  <option value="" disabled>Selecione um membro...</option>
+                  {funcionarios?.map((f) => (
+                    <option key={f.id} value={f.id}>{f.nomeCompleto}</option>
+                  ))}
+                </select>
+              </div>
+
+              {membrosVisiveis.length > 0 && (
+                <div className="mt-4 p-4 border border-dashed border-gray-300 rounded-md bg-gray-50">
+                  <label className="block text-muted font-medium text-xs mb-3 uppercase">Membros Vinculados</label>
+                  <div className="flex flex-wrap gap-2">
+                    {membrosVisiveis.map((membro) => (
+                      <div
+                        key={membro.funcionarioId}
+                        className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full flex items-center gap-2 text-sm shadow-sm transition-all border border-blue-200"
+                      >
+                        {membro.nome}
+                        <button
+                          type="button"
+                          onClick={() => removeResponsavel(membro.funcionarioId)}
+                          className="font-bold text-lg hover:text-red-600 hover:scale-110 cursor-pointer ml-1 leading-none"
+                          title="Remover membro"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Coluna direita - Status, Prioridade e Datas */}

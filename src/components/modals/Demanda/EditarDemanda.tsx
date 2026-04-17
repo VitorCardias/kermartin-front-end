@@ -22,6 +22,33 @@ type MembroFila = {
   status: 'ativo' | 'novo' | 'remover'; 
 };
 
+const normalizarMembrosFila = (lista: MembroFila[]): MembroFila[] => {
+  const prioridadeStatus: Record<MembroFila['status'], number> = {
+    ativo: 3,
+    novo: 2,
+    remover: 1,
+  };
+
+  const mapa = new Map<string, MembroFila>();
+
+  lista.forEach((membro) => {
+    const existente = mapa.get(membro.funcionarioId);
+    if (!existente) {
+      mapa.set(membro.funcionarioId, membro);
+      return;
+    }
+
+    const scoreExistente = prioridadeStatus[existente.status] + (existente.vinculoId ? 10 : 0);
+    const scoreAtual = prioridadeStatus[membro.status] + (membro.vinculoId ? 10 : 0);
+
+    if (scoreAtual > scoreExistente) {
+      mapa.set(membro.funcionarioId, membro);
+    }
+  });
+
+  return Array.from(mapa.values());
+};
+
 const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda, onSuccess }) => {
   const { editarDemanda, deletarDemanda } = useDemandas();
   const { clientes } = useClientes();
@@ -91,7 +118,7 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
         nome: m.funcionarioDTO.nomeCompleto,
         status: 'ativo'
       }));
-      setMembrosForm(equipeFormatada);
+      setMembrosForm(normalizarMembrosFila(equipeFormatada));
     } else {
       setMembrosForm([]);
     }
@@ -135,7 +162,6 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
       case 'EmAndamento': return { bg: 'bg-status-inprogress', text: 'text-status-inprogress' };
       case 'Finalizada': return { bg: 'bg-status-completed', text: 'text-status-completed' };
       case 'Atrasada': return { bg: 'bg-status-delayed', text: 'text-status-delayed' };
-      case 'Cancelada': return { bg: 'bg-gray-400', text: 'text-gray-700' };
       default: return { bg: 'bg-status-wait', text: 'text-status-wait' };
     }
   };
@@ -154,11 +180,13 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
           const existe = prev.find(m => m.funcionarioId === func.id);
           if (existe) {
             if (existe.status === 'remover') {
-              return prev.map(m => m.funcionarioId === func.id ? { ...m, status: m.vinculoId ? 'ativo' : 'novo' } : m);
+              return normalizarMembrosFila(
+                prev.map(m => m.funcionarioId === func.id ? { ...m, status: m.vinculoId ? 'ativo' : 'novo' } : m)
+              );
             }
             return prev;
           }
-          return [...prev, { funcionarioId: func.id, nome: func.nomeCompleto, status: 'novo' }];
+          return normalizarMembrosFila([...prev, { funcionarioId: func.id, nome: func.nomeCompleto, status: 'novo' }]);
         });
       }
     } else {
@@ -337,7 +365,7 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
                   <label className="block text-muted font-medium text-xs mb-3 uppercase">Membros Vinculados na Fila</label>
                   <div className="flex flex-wrap gap-2">
                     {membrosVisiveis.map((membro) => (
-                      <div key={membro.funcionarioId} className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full flex items-center gap-2 text-sm shadow-sm transition-all border border-blue-200">
+                      <div key={`${membro.funcionarioId}-${membro.vinculoId || membro.status}`} className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full flex items-center gap-2 text-sm shadow-sm transition-all border border-blue-200">
                         {membro.nome}
                         <button
                           type="button"
@@ -363,7 +391,6 @@ const EditarDemanda: React.FC<EditarDemandaProps> = ({ isOpen, onClose, demanda,
                   <option value="EmAndamento">Em Andamento</option>
                   <option value="Finalizada">Finalizado</option>
                   <option value="Atrasada">Atrasada</option>
-                  <option value="Cancelada">Cancelada</option>
                 </select>
               </div>
 

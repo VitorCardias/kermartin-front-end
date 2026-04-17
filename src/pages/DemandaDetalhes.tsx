@@ -8,6 +8,7 @@ import CardEtapa from "../components/CardEtapa";
 import CadastroEtapa from "../components/modals/Etapa/CadastroEtapa";
 import CadastroTarefa from "../components/modals/Tarefa/CadastroTarefa";
 import { useEtapas } from "../Hooks/useEtapas";
+import { useEquipe } from "../Hooks/useEquipe";
 
 type DemandaDetalheState = {
   demanda?: {
@@ -84,6 +85,7 @@ const DemandaDetalhes: React.FC = () => {
   const [mostrarSemEtapa, setMostrarSemEtapa] = useState(false);
 
   const { etapas, buscarEtapas } = useEtapas(id || "");
+  const { membrosEquipe } = useEquipe(id || "");
   const {
     tarefas,
     buscarTarefas,
@@ -96,10 +98,18 @@ const DemandaDetalhes: React.FC = () => {
   const nomeCliente = demanda?.clienteDto?.nome || "Cliente nao informado";
   const tituloDemanda = demanda?.titulo || "Demanda";
   const prazoDemanda = demanda?.conclusaoPrazo || "";
+  const responsaveisDaEquipe =
+    membrosEquipe?.map((membro) => membro.funcionarioDTO.nomeCompleto).filter(Boolean) || [];
+  const responsaveisDoState =
+    demanda?.responsavelList
+      ?.map((responsavel) => responsavel.nome || responsavel.funcionarioDTO?.nomeCompleto)
+      .filter(Boolean) || [];
   const responsavelPrincipal =
-    demanda?.responsavelList?.[0]?.nome ||
-    demanda?.responsavelList?.[0]?.funcionarioDTO?.nomeCompleto ||
-    "Sem atribuicao";
+    (responsaveisDaEquipe.length > 0
+      ? responsaveisDaEquipe.join(", ")
+      : responsaveisDoState.length > 0
+        ? responsaveisDoState.join(", ")
+        : "Sem atribuicao");
 
   useEffect(() => {
     if (id) {
