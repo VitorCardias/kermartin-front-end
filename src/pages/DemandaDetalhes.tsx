@@ -34,10 +34,42 @@ const statusLabel = (status?: string) => {
     RequerindoEquipe: "AGUARDANDO EQUIPE",
     Finalizada: "FINALIZADA",
     Atrasada: "ATRASADA",
+    Cancelada: "CANCELADA",
   };
 
   return mapa[status || ""] || "EM ANDAMENTO";
 };
+
+const getStatusColors = (status?: string): { bg: string; text: string } => {
+  switch (status) {
+    case "RequerindoEquipe":
+      return { bg: "bg-status-wait", text: "text-status-wait" };
+    case "EmAndamento":
+      return { bg: "bg-status-inprogress", text: "text-status-inprogress" };
+    case "Finalizada":
+      return { bg: "bg-status-completed", text: "text-status-completed" };
+    case "Atrasada":
+      return { bg: "bg-status-delayed", text: "text-status-delayed" };
+    default:
+      return { bg: "bg-status-inprogress", text: "text-status-inprogress" };
+  }
+};
+
+const LoadingTarefasSkeleton = () => (
+  <div className="space-y-3">
+    {[1, 2, 3, 4].map((item) => (
+      <div
+        key={item}
+        className="w-full bg-white rounded-lg shadow-md p-4 sm:p-6 animate-pulse border border-default"
+      >
+        <div className="h-4 w-44 bg-gray-200 rounded mb-3" />
+        <div className="h-5 w-3/4 bg-gray-200 rounded mb-4" />
+        <div className="h-3 w-1/2 bg-gray-100 rounded mb-2" />
+        <div className="h-3 w-2/3 bg-gray-100 rounded" />
+      </div>
+    ))}
+  </div>
+);
 
 const DemandaDetalhes: React.FC = () => {
   const navigate = useNavigate();
@@ -49,32 +81,41 @@ const DemandaDetalhes: React.FC = () => {
   const [isModalEtapaOpen, setIsModalEtapaOpen] = useState(false);
   const [isModalTarefaOpen, setIsModalTarefaOpen] = useState(false);
   const [etapaSelecionadaIds, setEtapaSelecionadaIds] = useState<Set<string>>(new Set());
-  
-  const { etapas, buscarEtapas } = useEtapas(id || "");
-  const { tarefas, buscarTarefas, formatarDataExibicao, loading: loadingTarefas, deletarTarefa, editarTarefa } = useTarefa();
+  const [mostrarSemEtapa, setMostrarSemEtapa] = useState(false);
 
-  const nomeCliente = demanda?.clienteDto?.nome || "Cliente não informado";
+  const { etapas, buscarEtapas } = useEtapas(id || "");
+  const {
+    tarefas,
+    buscarTarefas,
+    formatarDataExibicao,
+    loading: loadingTarefas,
+    deletarTarefa,
+    editarTarefa,
+  } = useTarefa();
+
+  const nomeCliente = demanda?.clienteDto?.nome || "Cliente nao informado";
   const tituloDemanda = demanda?.titulo || "Demanda";
   const prazoDemanda = demanda?.conclusaoPrazo || "";
   const responsavelPrincipal =
     demanda?.responsavelList?.[0]?.nome ||
     demanda?.responsavelList?.[0]?.funcionarioDTO?.nomeCompleto ||
-    "Sem atribuição";
+    "Sem atribuicao";
 
-  // Buscar tarefas ao montar o componente ou quando o ID mudar
   useEffect(() => {
     if (id) {
       buscarTarefas("demanda", id);
     }
   }, [id]);
 
-  // Filtrar tarefas da etapa selecionada
-  const tarefasFiltradas = etapaSelecionadaIds.size > 0
-    ? tarefas.filter((tarefa) => {
-        const etapaId = [...etapaSelecionadaIds][0];
-        return tarefa.etapaDemandaDTO?.id === etapaId;
-      })
-    : tarefas;
+  const tarefasFiltradas =
+    etapaSelecionadaIds.size === 0 && !mostrarSemEtapa
+      ? tarefas
+      : tarefas.filter((tarefa) => {
+          const etapaId = tarefa.etapaDemandaDTO?.id;
+          const pertenceEtapaSelecionada = !!etapaId && etapaSelecionadaIds.has(etapaId);
+          const pertenceSemEtapa = mostrarSemEtapa && !etapaId;
+          return pertenceEtapaSelecionada || pertenceSemEtapa;
+        });
 
   const handleModalEtapaClose = () => {
     setIsModalEtapaOpen(false);
@@ -91,27 +132,16 @@ const DemandaDetalhes: React.FC = () => {
     }
   };
 
-  const handleEtapaClick = (etapaId: string, isMultiple: boolean) => {
+  const handleEtapaClick = (etapaId: string, _isMultiple: boolean) => {
     setEtapaSelecionadaIds((prevIds) => {
       const novoSet = new Set(prevIds);
-      
-      if (isMultiple) {
-        // Seleção múltipla com Ctrl/Cmd
-        if (novoSet.has(etapaId)) {
-          novoSet.delete(etapaId);
-        } else {
-          novoSet.add(etapaId);
-        }
+
+      if (novoSet.has(etapaId)) {
+        novoSet.delete(etapaId);
       } else {
-        // Seleção única (clique normal)
-        if (novoSet.has(etapaId)) {
-          novoSet.delete(etapaId);
-        } else {
-          novoSet.clear();
-          novoSet.add(etapaId);
-        }
+        novoSet.add(etapaId);
       }
-      
+
       return novoSet;
     });
   };
@@ -149,9 +179,8 @@ const DemandaDetalhes: React.FC = () => {
     }
   };
 
-  const etapaSelecionada = etapaSelecionadaIds.size > 0
-    ? etapas.find((e) => e.id === [...etapaSelecionadaIds][0])
-    : null;
+  const statusColors = getStatusColors(demanda?.statusDemanda);
+  const filtrosAtivos = etapaSelecionadaIds.size + (mostrarSemEtapa ? 1 : 0);
 
   return (
     <div className="w-full px-3 sm:px-4 lg:px-8 py-4">
@@ -171,7 +200,7 @@ const DemandaDetalhes: React.FC = () => {
 
             <p className="text-xs text-muted">Demandas / Detalhes</p>
           </div>
-          <span className="inline-flex mt-5 bg-status-inprogress text-status-inprogress px-3 py-1 rounded text-xs font-semibold w-full">
+          <span className={`inline-flex mt-5 px-3 py-1 rounded text-xs font-semibold w-full ${statusColors.bg} ${statusColors.text}`}>
             {statusLabel(demanda?.statusDemanda)}
           </span>
 
@@ -184,7 +213,7 @@ const DemandaDetalhes: React.FC = () => {
             </div>
 
             <div>
-              <p className="text-[11px] font-semibold tracking-wide text-muted">RESPONSÁVEL:</p>
+              <p className="text-[11px] font-semibold tracking-wide text-muted">RESPONSAVEL:</p>
               <p className="text-main text-md font-semibold">{responsavelPrincipal}</p>
             </div>
 
@@ -196,8 +225,8 @@ const DemandaDetalhes: React.FC = () => {
             </div>
 
             <div>
-              <p className="text-[11px] font-semibold tracking-wide text-muted">DESCRIÇÃO:</p>
-              <p className="text-main text-md font-semibold">{demanda?.descricao || "Descrição não informada"}</p>
+              <p className="text-[11px] font-semibold tracking-wide text-muted">DESCRICAO:</p>
+              <p className="text-main text-md font-semibold">{demanda?.descricao || "Descricao nao informada"}</p>
             </div>
           </div>
 
@@ -205,26 +234,41 @@ const DemandaDetalhes: React.FC = () => {
             type="button"
             className="w-full mt-8 bg-primary text-white text-xs font-semibold py-2.5 rounded-lg hover:brightness-110 transition cursor-pointer"
           >
-            EMITIR RELATÓRIO
-            <img src={download} alt="Ícone de download" className="inline-block w-3 h-3 ml-2" />
+            EMITIR RELATORIO
+            <img src={download} alt="Icone de download" className="inline-block w-3 h-3 ml-2" />
           </button>
         </aside>
 
         <section className="bg-white border border-default rounded-xl p-4 sm:p-6">
           <div className="flex items-center gap-6 border-b border-default pb-3 overflow-x-auto no-scrollbar">
             <button
-              className="text-muted font-semibold text-sm cursor-pointer whitespace-nowrap hover:text-primary transition"
-              onClick={() => setEtapaSelecionadaIds(new Set())}
+              className={`font-semibold text-sm cursor-pointer whitespace-nowrap transition ${
+                etapaSelecionadaIds.size === 0 && !mostrarSemEtapa
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted hover:text-primary"
+              }`}
+              onClick={() => {
+                setEtapaSelecionadaIds(new Set());
+                setMostrarSemEtapa(false);
+              }}
             >
               Todas
+            </button>
+            <button
+              className={`font-semibold text-sm cursor-pointer whitespace-nowrap transition ${
+                mostrarSemEtapa ? "text-primary border-b-2 border-primary" : "text-muted hover:text-primary"
+              }`}
+              onClick={() => setMostrarSemEtapa((prev) => !prev)}
+            >
+              Sem Etapa
             </button>
             {etapas.map((etapa) => (
               <button
                 key={etapa.id}
                 className={`font-semibold text-sm cursor-pointer whitespace-nowrap transition ${
                   etapaSelecionadaIds.has(etapa.id)
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-muted hover:text-primary'
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted hover:text-primary"
                 }`}
                 onClick={() => handleEtapaClick(etapa.id, false)}
               >
@@ -237,7 +281,7 @@ const DemandaDetalhes: React.FC = () => {
             <div>
               <p className="text-xs text-muted font-semibold uppercase">Tarefas de:</p>
               <p className="text-main text-md font-bold">
-                {etapaSelecionada?.titulo || "Todas as tarefas"}
+                {filtrosAtivos === 0 ? "Todas as tarefas" : `${filtrosAtivos} filtro(s) aplicado(s)`}
               </p>
             </div>
             <button
@@ -249,26 +293,26 @@ const DemandaDetalhes: React.FC = () => {
             </button>
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 max-h-[680px] overflow-y-auto pr-1">
             {loadingTarefas ? (
-              <div className="flex justify-center items-center py-8">
-                <p className="text-muted">Carregando tarefas...</p>
-              </div>
+              <LoadingTarefasSkeleton />
             ) : tarefasFiltradas.length > 0 ? (
-              tarefasFiltradas.map((tarefa) => (
-                <CardTarefa
-                  key={tarefa.id}
-                  tarefa={tarefa}
-                  titulo={tarefa.titulo}
-                  descricao={tarefa.descricao || "Sem descrição"}
-                  prioridade={tarefa.prioridade.toLowerCase() as 'baixa' | 'media' | 'alta'}
-                  dataVencimento={formatarDataExibicao(tarefa.conclusaoPrazo)}
-                  responsaveis={[tarefa.criador?.nome || "Sem responsável"]}
-                  onDelete={() => handleDeleteTarefa(tarefa.id)}
-                  onEditSuccess={() => handleModalSuccess()}
-                  onStatusChange={handleStatusChange}
-                />
-              ))
+              <div className="space-y-3">
+                {tarefasFiltradas.map((tarefa) => (
+                  <CardTarefa
+                    key={tarefa.id}
+                    tarefa={tarefa}
+                    titulo={tarefa.titulo}
+                    descricao={tarefa.descricao || "Sem descricao"}
+                    prioridade={tarefa.prioridade.toLowerCase() as "baixa" | "media" | "alta"}
+                    dataVencimento={formatarDataExibicao(tarefa.conclusaoPrazo)}
+                    responsaveis={[tarefa.criador?.nome || "Sem responsavel"]}
+                    onDelete={() => handleDeleteTarefa(tarefa.id)}
+                    onEditSuccess={() => handleModalSuccess()}
+                    onStatusChange={handleStatusChange}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="flex justify-center items-center py-8">
                 <p className="text-muted">Nenhuma tarefa encontrada</p>
@@ -289,10 +333,8 @@ const DemandaDetalhes: React.FC = () => {
             </button>
           </div>
 
-          {etapaSelecionadaIds.size > 0 && (
-            <p className="text-xs text-blue font-semibold mt-2">
-              {etapaSelecionadaIds.size} etapa(s) selecionada(s)
-            </p>
+          {filtrosAtivos > 0 && (
+            <p className="text-xs text-blue font-semibold mt-2">{filtrosAtivos} filtro(s) selecionado(s)</p>
           )}
 
           <div className="mt-5 space-y-3">
@@ -317,7 +359,6 @@ const DemandaDetalhes: React.FC = () => {
         </aside>
       </div>
 
-      {/* Modal de Cadastro de Etapa */}
       <CadastroEtapa
         isOpen={isModalEtapaOpen}
         idDemanda={id || ""}
@@ -325,7 +366,6 @@ const DemandaDetalhes: React.FC = () => {
         onSuccess={handleModalSuccess}
       />
 
-      {/* Modal de Cadastro de Tarefa */}
       <CadastroTarefa
         isOpen={isModalTarefaOpen}
         onClose={handleModalTarefaClose}
