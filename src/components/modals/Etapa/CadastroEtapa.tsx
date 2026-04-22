@@ -165,31 +165,29 @@ const CadastroEtapa: React.FC<CadastroEtapaModalProps> = ({ isOpen, idDemanda, o
 
       const resultado = await cadastrarEtapa(etapaPayload);
 
-      if (resultado) {
-        if (resultado.id) {
-          await herdarEquipeDemandaNaEtapa(idDemanda, resultado.id);
-        }
-
-        setAlert({
-          isOpen: true,
-          titulo: "Sucesso",
-          mensagem: "Etapa cadastrada com sucesso!",
-          tipo: "sucesso",
-          acaoConfirmar: () => {
-            setFormData({
-              titulo: "",
-              descricao: "",
-              prioridade: "Media" as const,
-              status: "RequerindoEquipe" as const,
-              porcentagemConclusao: 0,
-              inicioPrazo: "",
-              conclusaoPrazo: "",
-            });
-            onSuccess?.();
-            onClose();
-          },
-        });
+      if (resultado?.id) {
+        await herdarEquipeDemandaNaEtapa(idDemanda, resultado.id);
       }
+
+      setAlert({
+        isOpen: true,
+        titulo: "Sucesso",
+        mensagem: "Etapa cadastrada com sucesso!",
+        tipo: "sucesso",
+        acaoConfirmar: () => {
+          setFormData({
+            titulo: "",
+            descricao: "",
+            prioridade: "Media" as const,
+            status: "RequerindoEquipe" as const,
+            porcentagemConclusao: 0,
+            inicioPrazo: "",
+            conclusaoPrazo: "",
+          });
+          onSuccess?.();
+          onClose();
+        },
+      });
     } catch (error: any) {
       console.error("Erro ao cadastrar etapa:", error);
       const mensagemErro = error?.response?.data?.message || error?.message || "Erro ao cadastrar etapa. Tente novamente.";
@@ -325,6 +323,7 @@ const CadastroEtapa: React.FC<CadastroEtapaModalProps> = ({ isOpen, idDemanda, o
         titulo={alert.titulo}
         mensagem={alert.mensagem}
         tipo={alert.tipo}
+        zIndexClass="z-[80]"
         onConfirm={() => {
           setAlert((prev) => ({ ...prev, isOpen: false }));
           if (alert.acaoConfirmar) {

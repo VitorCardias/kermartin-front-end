@@ -346,7 +346,7 @@ const DemandaDetalhes: React.FC = () => {
                     titulo={tarefa.titulo}
                     descricao={tarefa.descricao || "Sem descricao"}
                     prioridade={tarefa.prioridade.toLowerCase() as "baixa" | "media" | "alta"}
-                    dataVencimento={formatarDataExibicao(tarefa.conclusaoPrazo)}
+                    dataVencimento={tarefa.conclusaoPrazo || ""}
                     responsaveis={[tarefa.criador?.nome || "Sem responsavel"]}
                     onDelete={() => handleDeleteTarefa(tarefa.id)}
                     onEditSuccess={() => handleModalSuccess()}

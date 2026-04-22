@@ -8,6 +8,7 @@ import Paginacao from "../components/Paginacao";
 import FiltrosAvancadosDemanda from "../components/modals/Demanda/FiltrosAvancadosDemanda";
 import { useDemandas, type FiltrosDemandaAvancados } from "../Hooks/useDemandas";
 import StatusFiltro from "../components/StatusFiltro";
+import { authApi } from "../api/AuthService";
 
 const Demandas: React.FC = () => {
   const location = useLocation();
@@ -29,9 +30,80 @@ const Demandas: React.FC = () => {
   const [demandaSelecionada, setDemandaSelecionada] = useState<any>(null);
   const [demandasLocais, setDemandasLocais] = useState(demandas);
   const [filtroInicialAplicado, setFiltroInicialAplicado] = useState(false);
+  const [responsaveisPorDemanda, setResponsaveisPorDemanda] = useState<Record<string, string[]>>({});
+  const cacheResponsaveisRef = React.useRef<Record<string, string[]>>({});
 
   React.useEffect(() => {
     setDemandasLocais(demandas);
+  }, [demandas]);
+
+  React.useEffect(() => {
+    if (!demandas.length) return;
+
+    const nomesLocais: Record<string, string[]> = {};
+
+    demandas.forEach((demanda) => {
+      const nomes = Array.from(
+        new Set(
+          (demanda.responsavelList || [])
+            .map((r: any) => r?.nome || r?.funcionarioDTO?.nomeCompleto)
+            .filter((nome: string | undefined) => Boolean(nome?.trim()))
+        )
+      );
+
+      if (nomes.length > 0) {
+        nomesLocais[demanda.id] = nomes;
+        cacheResponsaveisRef.current[demanda.id] = nomes;
+      }
+    });
+
+    if (Object.keys(nomesLocais).length > 0) {
+      setResponsaveisPorDemanda((prev) => ({ ...prev, ...nomesLocais }));
+    }
+
+    const idsSemCache = demandas.map((demanda) => demanda.id).filter((id) => !cacheResponsaveisRef.current[id]);
+    if (idsSemCache.length === 0) return;
+
+    const carregarResponsaveis = async () => {
+      const resultados = await Promise.allSettled(
+        idsSemCache.map(async (id) => {
+          const response = await authApi.get(`/membro-equipe-demanda/listar-todos-por-demanda/${id}`, {
+            params: { page: 0, size: 50 },
+          });
+
+          const membros = Array.isArray(response.data)
+            ? response.data
+            : Array.isArray(response.data?.content)
+              ? response.data.content
+              : [];
+
+          const nomes: string[] = Array.from(
+            new Set(
+              membros
+                .map((membro: any) => membro?.funcionarioDTO?.nomeCompleto)
+                .filter((nome: unknown): nome is string => typeof nome === "string" && nome.trim().length > 0)
+            )
+          );
+
+          return { id, nomes };
+        })
+      );
+
+      const atualizado: Record<string, string[]> = {};
+      resultados.forEach((resultado) => {
+        if (resultado.status !== "fulfilled") return;
+        const { id, nomes } = resultado.value;
+        const fallback = cacheResponsaveisRef.current[id] || [];
+        atualizado[id] = nomes.length > 0 ? nomes : fallback;
+        cacheResponsaveisRef.current[id] = atualizado[id];
+      });
+
+      if (Object.keys(atualizado).length > 0) {
+        setResponsaveisPorDemanda((prev) => ({ ...prev, ...atualizado }));
+      }
+    };
+
+    carregarResponsaveis();
   }, [demandas]);
 
   React.useEffect(() => {
@@ -156,6 +228,7 @@ const Demandas: React.FC = () => {
                   prioridade={mapearPrioridadeParaDisplay(demanda.prioridadeDemanda)}
                   status={mapearStatusParaDisplay(demanda.statusDemanda)}
                   dataVencimento={demanda.conclusaoPrazo || "Sem data"}
+                  responsaveis={responsaveisPorDemanda[demanda.id] || []}
                   demanda={demanda}
                   onEdit={(demandaEditando) => {
                     setDemandaSelecionada(demandaEditando);

@@ -8,6 +8,7 @@ import FiltrosAvancadosTarefa from "../components/modals/Tarefa/FiltrosAvancados
 import CadastroTarefa from "../components/modals/Tarefa/CadastroTarefa";
 import { useTarefasListagem, type FiltrosTarefaAvancados } from "../Hooks/useTarefasListagem";
 import { useTarefa } from "../Hooks/useTarefa";
+import { authApi } from "../api/AuthService";
 
 const Tarefas: React.FC = () => {
   const location = useLocation();
@@ -29,6 +30,8 @@ const Tarefas: React.FC = () => {
   const { editarTarefa, deletarTarefa } = useTarefa();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filtroInicialAplicado, setFiltroInicialAplicado] = useState(false);
+  const [responsaveisPorTarefa, setResponsaveisPorTarefa] = useState<Record<string, string[]>>({});
+  const cacheResponsaveisRef = React.useRef<Record<string, string[]>>({});
 
   const demandasOptions = useMemo(
     () => demandasParaFiltro.map((demanda) => ({ id: demanda.id, label: demanda.titulo })),
@@ -47,6 +50,74 @@ const Tarefas: React.FC = () => {
     atualizarFiltrosAvancados(filtroInicial);
     setFiltroInicialAplicado(true);
   }, [location.state, filtroInicialAplicado, atualizarFiltrosAvancados]);
+
+  React.useEffect(() => {
+    if (!tarefas.length) return;
+
+    const nomesLocais: Record<string, string[]> = {};
+    tarefas.forEach((tarefa) => {
+      const nomes = new Set<string>();
+      const criadorNome = tarefa.criador?.nome?.trim();
+      if (criadorNome) nomes.add(criadorNome);
+
+      if (nomes.size > 0) {
+        nomesLocais[tarefa.id] = Array.from(nomes);
+        cacheResponsaveisRef.current[tarefa.id] = Array.from(nomes);
+      }
+    });
+
+    if (Object.keys(nomesLocais).length > 0) {
+      setResponsaveisPorTarefa((prev) => ({ ...prev, ...nomesLocais }));
+    }
+
+    const idsSemCache = tarefas
+      .map((tarefa) => tarefa.id)
+      .filter((id) => !cacheResponsaveisRef.current[id]);
+
+    if (idsSemCache.length === 0) return;
+
+    const carregarResponsaveis = async () => {
+      const resultados = await Promise.allSettled(
+        idsSemCache.map(async (id) => {
+          const response = await authApi.get(`/membro-equipe-tarefa/listar-todos-por-tarefa/${id}`, {
+            params: { page: 0, size: 50 },
+          });
+
+          const membros = Array.isArray(response.data)
+            ? response.data
+            : Array.isArray(response.data?.content)
+              ? response.data.content
+              : [];
+
+          const nomes: string[] = Array.from(
+            new Set(
+              membros
+                .map((membro: any) => membro?.funcionarioDTO?.nomeCompleto)
+                .filter((nome: unknown): nome is string => typeof nome === "string" && nome.trim().length > 0)
+            )
+          );
+
+          return { id, nomes };
+        })
+      );
+
+      const atualizado: Record<string, string[]> = {};
+
+      resultados.forEach((resultado) => {
+        if (resultado.status !== "fulfilled") return;
+        const { id, nomes } = resultado.value;
+        const fallback = cacheResponsaveisRef.current[id] || [];
+        atualizado[id] = nomes.length > 0 ? nomes : fallback;
+        cacheResponsaveisRef.current[id] = atualizado[id];
+      });
+
+      if (Object.keys(atualizado).length > 0) {
+        setResponsaveisPorTarefa((prev) => ({ ...prev, ...atualizado }));
+      }
+    };
+
+    carregarResponsaveis();
+  }, [tarefas]);
 
   const handleAtualizarFiltros = useCallback(
     (novosFiltros: Partial<FiltrosTarefaAvancados>) => {
@@ -181,7 +252,7 @@ const Tarefas: React.FC = () => {
                     descricao={tarefa.descricao || "Sem descricao"}
                     prioridade={tarefa.prioridade.toLowerCase() as "baixa" | "media" | "alta"}
                     dataVencimento={tarefa.conclusaoPrazo || ""}
-                    responsaveis={[tarefa.criador?.nome || "Sem responsavel"]}
+                    responsaveis={responsaveisPorTarefa[tarefa.id] || [tarefa.criador?.nome || "Sem responsavel"]}
                     onDelete={() => handleDeleteTarefa(tarefa.id)}
                     onEditSuccess={() => recarregar()}
                     onStatusChange={handleStatusChange}

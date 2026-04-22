@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import type { Funcionario } from "../../../Hooks/useFuncionarios";
+import type { CreateFuncionario, Funcionario } from "../../../Hooks/useFuncionarios";
 import { 
   formatarEmail, 
   formatarTexto, 
@@ -13,7 +13,7 @@ import AlertModal from "../AlertModal";
 type CadastroFuncionarioModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onCadastro: (novoFuncionario: Funcionario) => Promise<void>;
+  onCadastro: (novoFuncionario: CreateFuncionario) => Promise<void>;
 };
 
 type ErrosCampo = {
@@ -27,6 +27,7 @@ type ErrosCampo = {
 
 const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, onClose, onCadastro }) => {
   if (!isOpen) return null;
+  const formId = "cadastro-funcionario-form";
 
   const [formData, setFormData] = useState<Funcionario>({
     id: "",
@@ -89,103 +90,6 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
     }
   };
 
-  // Validações assíncronas - verificar duplicações
-  // ⚠️ COMENTADAS: Aguardando implementação dos endpoints no backend
-  /*
-  const verificarEmailDuplicado = async (email: string) => {
-    if (!email.includes("@") || !email.includes(".")) return;
-    
-    setValidando(prev => ({ ...prev, emailValidando: true }));
-    try {
-      const response = await authApi.get("/funcionario/verificar-email", {
-        params: { email: email.toLowerCase() }
-      });
-      
-      if (response.data?.existe) {
-        setErrosCampo(prev => ({ 
-          ...prev, 
-          emailCadastro: "Este e-mail já está cadastrado no sistema" 
-        }));
-      } else {
-        setErrosCampo(prev => {
-          const novo = { ...prev };
-          delete novo.emailCadastro;
-          return novo;
-        });
-      }
-    } catch (error: any) {
-      // Se endpoint não existe (404), ignorar
-      // Se houver outro erro, logar mas não bloquear
-      if (error.response?.status !== 404) {
-        console.log("Erro ao verificar email:", error.message);
-      }
-    } finally {
-      setValidando(prev => ({ ...prev, emailValidando: false }));
-    }
-  };
-
-  const verificarUsuarioDuplicado = async (usuario: string) => {
-    if (usuario.length < 3) return;
-    
-    setValidando(prev => ({ ...prev, usuarioValidando: true }));
-    try {
-      const response = await authApi.get("/funcionario/verificar-usuario", {
-        params: { usuario: usuario.trim() }
-      });
-      
-      if (response.data?.existe) {
-        setErrosCampo(prev => ({ 
-          ...prev, 
-          nomeUsuario: "Este nome de usuário já existe no sistema" 
-        }));
-      } else {
-        setErrosCampo(prev => {
-          const novo = { ...prev };
-          delete novo.nomeUsuario;
-          return novo;
-        });
-      }
-    } catch (error: any) {
-      if (error.response?.status !== 404) {
-        console.log("Erro ao verificar usuário:", error.message);
-      }
-    } finally {
-      setValidando(prev => ({ ...prev, usuarioValidando: false }));
-    }
-  };
-
-  const verificarCPFDuplicado = async (cpf: string) => {
-    const cpfLimpo = removerFormatacao(cpf);
-    if (cpfLimpo.length !== 11) return;
-    
-    setValidando(prev => ({ ...prev, cpfValidando: true }));
-    try {
-      const response = await authApi.get("/funcionario/verificar-cpf", {
-        params: { cpf: cpfLimpo }
-      });
-      
-      if (response.data?.existe) {
-        setErrosCampo(prev => ({ 
-          ...prev, 
-          cpf: "Este CPF já está cadastrado no sistema" 
-        }));
-      } else {
-        setErrosCampo(prev => {
-          const novo = { ...prev };
-          delete novo.cpf;
-          return novo;
-        });
-      }
-    } catch (error: any) {
-      if (error.response?.status !== 404) {
-        console.log("Erro ao verificar CPF:", error.message);
-      }
-    } finally {
-      setValidando(prev => ({ ...prev, cpfValidando: false }));
-    }
-  };
-  */
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     let novoValor = value;
@@ -202,39 +106,6 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
       ...prev,
       [name]: erro
     }));
-
-    // ⚠️ Validações assíncronas COMENTADAS: Aguardando endpoints no backend
-    /*
-    // Validações assíncronas com debounce
-    if (name === "emailCadastro" && !erro) {
-      // Limpar debounce anterior
-      if (debounceTimers.current[name]) {
-        clearTimeout(debounceTimers.current[name]);
-      }
-      // Novo debounce
-      debounceTimers.current[name] = setTimeout(() => {
-        verificarEmailDuplicado(novoValor);
-      }, 800);
-    }
-
-    if (name === "nomeUsuario" && !erro) {
-      if (debounceTimers.current[name]) {
-        clearTimeout(debounceTimers.current[name]);
-      }
-      debounceTimers.current[name] = setTimeout(() => {
-        verificarUsuarioDuplicado(novoValor);
-      }, 800);
-    }
-
-    if (name === "cpf" && !erro) {
-      if (debounceTimers.current[name]) {
-        clearTimeout(debounceTimers.current[name]);
-      }
-      debounceTimers.current[name] = setTimeout(() => {
-        verificarCPFDuplicado(novoValor);
-      }, 800);
-    }
-    */
   };
 
   const validateForm = (): ErrosCampo => {
@@ -268,27 +139,12 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
       });
       return;
     }
-
-    // ⚠️ COMENTADO: Aguardando implementação dos endpoints no backend
-    /*
-    // Verificar se há alguma validação assíncrona em andamento
-    if (Object.values(validando).some(v => v)) {
-      setAlert({
-        isOpen: true,
-        titulo: "Aguarde",
-        mensagem: "Ainda estamos verificando os dados. Aguarde um momento...",
-        tipo: "aviso",
-      });
-      return;
-    }
-    */
     
     setLoading(true);
     try {
-      const { id, ...novoFuncionarioData } = formData;
+      const { id: _idIgnorado, ...novoFuncionarioData } = formData;
       
-      const novoFuncionario = {
-        id: id || "", 
+      const novoFuncionario: CreateFuncionario = {
         nomeCompleto: formatarTexto(novoFuncionarioData.nomeCompleto),
         nomeUsuario: novoFuncionarioData.nomeUsuario.trim(),
         emailCadastro: formatarEmail(novoFuncionarioData.emailCadastro),
@@ -370,9 +226,9 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
     <div className="fixed inset-0 bg-gray-500/60 flex items-center justify-center z-50 p-4">
       <div className="w-full max-w-md sm:max-w-lg md:max-w-xl bg-white rounded-xl border border-gray-300 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="w-full bg-light border-b-3 border-default sticky top-0 z-10">
-          <Titulo tamanho="text-2xl sm:text-3xl p-4 sm:p-6">Cadastro Funcionário</Titulo>
+          <Titulo tamanho="text-2xl sm:text-3xl p-4 sm:p-6">Cadastro Colaborador</Titulo>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 p-4 sm:p-6">
+        <form id={formId} onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 p-4 sm:p-6">
           <p className="text-blue font-semibold text-xs sm:text-sm uppercase mb-4 sm:mb-6 mt-4">Informações Pessoais</p>
           
           {/* Nome Completo */}
@@ -513,6 +369,7 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
           </button>
           <button 
             type="submit"
+            form={formId}
             disabled={loading}
             className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-md transition hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium">
             {loading ? "Cadastrando..." : "Cadastrar"}
@@ -523,6 +380,7 @@ const CadastroFuncionario: React.FC<CadastroFuncionarioModalProps> = ({ isOpen, 
           titulo={alert.titulo}
           mensagem={alert.mensagem}
           tipo={alert.tipo}
+          zIndexClass="z-[80]"
           mostrarBotaoCancelar={false}
           onCancel={() => {
             setAlert({ ...alert, isOpen: false });

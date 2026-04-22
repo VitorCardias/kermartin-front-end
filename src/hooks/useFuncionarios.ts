@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { usePerfil } from "./usePerfil";
 import { authApi } from "../api/AuthService";
 
@@ -14,7 +14,7 @@ type FuncionarioAPI = {
   nomeCompleto: string;
   cpf: string;
   qualificacaoFuncionario: string;
-  escritorioDTO: { id: string }; // Apenas o ID do escritório
+  escritorioDTO: { id: string };
 };
 
 export type Funcionario = {
@@ -27,10 +27,14 @@ export type Funcionario = {
   qualificacaoFuncionario: string;
 };
 
+export type CreateFuncionario = Omit<Funcionario, "id"> & {
+  id?: string;
+};
+
 export type AlterarSenhaFuncionarioForm = {
   idFuncionario: string;
   novaSenha: string;
-}
+};
 
 type PaginacaoResponse = {
   content: FuncionarioAPI[];
@@ -43,54 +47,50 @@ export const useFuncionarios = () => {
   const [loading, setLoading] = useState(true);
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(1);
-  const itensPorPagina = 10; // Número de funcionários por página
+  const itensPorPagina = 10;
 
-  // Função para buscar funcionários
   const buscarFuncionarios = async () => {
     try {
       if (!perfil?.id) {
-        console.error("Erro: Perfil do usuário não encontrado.");
+        console.error("Erro: Perfil do usuario nao encontrado.");
         return;
       }
 
       setLoading(true);
-      const response = await authApi.get<PaginacaoResponse>(`/funcionario/listar-todos-por-escritorio/${perfil.idEscritorio}`, {
-        params: { page: paginaAtual, size: itensPorPagina },
-      });
+      const response = await authApi.get<PaginacaoResponse>(
+        `/funcionario/listar-todos-por-escritorio/${perfil.idEscritorio}`,
+        {
+          params: { page: paginaAtual, size: itensPorPagina },
+        }
+      );
 
-      const funcionariosFormatados: FuncionarioAPI[] = response.data.content.map((funcionario: FuncionarioAPI) => ({
-        ...funcionario,
-        escritorioId: funcionario.escritorioDTO.id,
-      }));
-
-      setFuncionarios(funcionariosFormatados);
-      setTotalPaginas(response.data.totalPages);
-      setLoading(false);
+      setFuncionarios(response.data.content || []);
+      setTotalPaginas(response.data.totalPages || 1);
     } catch (error) {
-      console.error("Erro ao buscar funcionários:", error);
+      console.error("Erro ao buscar funcionarios:", error);
+      setFuncionarios([]);
+    } finally {
       setLoading(false);
     }
   };
 
-  // Função para cadastrar um novo Funcionário
-  const cadastrarFuncionario = async (novoFuncionario: Funcionario) => {
+  const cadastrarFuncionario = async (novoFuncionario: CreateFuncionario) => {
     try {
       if (!perfil?.id) {
-        console.error("Erro: Perfil do usuário não encontrado.");
+        console.error("Erro: Perfil do usuario nao encontrado.");
         return;
       }
 
-      console.log("ID do Escritório que está sendo enviado:", perfil.idEscritorio);
+      const { id: _idIgnorado, ...dadosFuncionario } = novoFuncionario;
 
       await authApi.post("/funcionario/cadastro", {
-        ...novoFuncionario,
-        escritorio: perfil.idEscritorio ,
-      
+        ...dadosFuncionario,
+        escritorio: perfil.idEscritorio,
       });
 
-      await buscarFuncionarios(); // Recarrega a lista após o cadastro
+      await buscarFuncionarios();
     } catch (error) {
-      console.error("Erro ao cadastrar Funcionario:", error);
+      console.error("Erro ao cadastrar funcionario:", error);
       throw error;
     }
   };
@@ -99,19 +99,21 @@ export const useFuncionarios = () => {
     try {
       if (!perfil?.id) return;
       await authApi.put("/funcionario/editar", { ...funcionarioEditado });
-      await buscarFuncionarios(); 
+      await buscarFuncionarios();
     } catch (erro) {
-      console.error("Erro ao editar funcionario: ", erro);
+      console.error("Erro ao editar funcionario:", erro);
+      throw erro;
     }
   };
 
-const alterarSenhaFuncionario = async (alterarSenhaFuncionarioRequest: AlterarSenhaFuncionarioForm) => {
+  const alterarSenhaFuncionario = async (alterarSenhaFuncionarioRequest: AlterarSenhaFuncionarioForm) => {
     try {
       if (!perfil?.id) return;
       await authApi.put("/funcionario/alterar-senha-funcionario", { ...alterarSenhaFuncionarioRequest });
       await buscarFuncionarios();
     } catch (erro) {
-      console.error("Erro ao editar funcionario: ", erro);
+      console.error("Erro ao alterar senha do funcionario:", erro);
+      throw erro;
     }
   };
 
@@ -130,7 +132,6 @@ const alterarSenhaFuncionario = async (alterarSenhaFuncionarioRequest: AlterarSe
     itensPorPagina,
     cadastrarFuncionario,
     editarFuncionario,
-    alterarSenhaFuncionario
+    alterarSenhaFuncionario,
   };
-
 };

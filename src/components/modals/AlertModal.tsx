@@ -12,6 +12,7 @@ interface ModalAlertaProps {
     onConfirm: () => void;
     tipo?: 'aviso' | 'erro' | 'sucesso';
     mostrarBotaoCancelar?: boolean;
+    zIndexClass?: string;
 }
 
 const ModalAlerta: React.FC<ModalAlertaProps> = ({
@@ -23,7 +24,8 @@ const ModalAlerta: React.FC<ModalAlertaProps> = ({
     onCancel,
     onConfirm,
     tipo = 'aviso',
-    mostrarBotaoCancelar = true
+    mostrarBotaoCancelar = true,
+    zIndexClass = 'z-50'
 }) => {
     if (!isOpen) return null;
 
@@ -40,7 +42,7 @@ const ModalAlerta: React.FC<ModalAlertaProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 bg-gray-500/60 flex items-center justify-center z-50">
+        <div className={`fixed inset-0 bg-gray-500/60 flex items-center justify-center ${zIndexClass}`}>
             <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm mx-4">
                 <div className="flex items-center gap-3 mb-4">
                     <div className={`text-2xl ${coresIcone[tipo]}`}>

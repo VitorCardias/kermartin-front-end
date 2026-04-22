@@ -103,11 +103,45 @@ const CardEtapa: React.FC<CardEtapaProps> = ({
     if (!data) return "Sem prazo";
     
     try {
-      // Trata diferentes formatos de data
-      const date = new Date(data);
+      let date: Date | null = null;
+
+      if (data.includes("T")) {
+        const isoDate = new Date(data);
+        date = isNaN(isoDate.getTime()) ? null : isoDate;
+      } else if (data.includes(" ")) {
+        const [dataParte, horaParte = "00:00:00"] = data.split(" ");
+        if (dataParte.includes("-")) {
+          const partes = dataParte.split("-");
+          if (partes.length === 3) {
+            let dia = "01";
+            let mes = "01";
+            let ano = "1970";
+
+            if (partes[0].length === 4) {
+              [ano, mes, dia] = partes;
+            } else {
+              [dia, mes, ano] = partes;
+            }
+
+            const [hora = "00", minuto = "00", segundo = "00"] = horaParte.split(":");
+            const dt = new Date(
+              Number(ano),
+              Number(mes) - 1,
+              Number(dia),
+              Number(hora),
+              Number(minuto),
+              Number(segundo)
+            );
+            date = isNaN(dt.getTime()) ? null : dt;
+          }
+        }
+      } else {
+        const fallback = new Date(data);
+        date = isNaN(fallback.getTime()) ? null : fallback;
+      }
       
       // Verifica se a data é válida
-      if (isNaN(date.getTime())) {
+      if (!date || isNaN(date.getTime())) {
         return "Sem prazo";
       }
       

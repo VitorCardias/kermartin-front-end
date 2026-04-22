@@ -199,7 +199,7 @@ const EditarFuncionario: React.FC<EditarFuncionarioModalProps> = ({
       <div className="w-full max-w-md sm:max-w-lg md:max-w-xl bg-white rounded-xl border border-gray-300 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="w-full bg-light border-b-3 border-default sticky top-0 z-10 flex-shrink-0">
-          <Titulo tamanho="text-2xl sm:text-3xl p-3 sm:p-4 md:p-6">Editar Funcionário</Titulo>
+          <Titulo tamanho="text-2xl sm:text-3xl p-3 sm:p-4 md:p-6">Editar Colaborador</Titulo>
         </div>
 
         {/* Content - Scrollable */}
@@ -388,6 +388,7 @@ const EditarFuncionario: React.FC<EditarFuncionarioModalProps> = ({
           titulo={alert.titulo}
           mensagem={alert.mensagem}
           tipo={alert.tipo}
+          zIndexClass="z-[80]"
           mostrarBotaoCancelar={false}
           onCancel={() => {
             setAlert({ ...alert, isOpen: false });

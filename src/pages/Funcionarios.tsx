@@ -157,7 +157,7 @@ const Funcionarios: React.FC = () => {
 
         <div className="w-full sm:w-4/5 bg-white rounded-lg shadow-md p-4 sm:p-6 flex flex-col">
           <Pesquisar
-            label="Pesquisar Funcionario:"
+            label="Pesquisar Colaborador:"
             placeholder="Digite o nome, email ou qualificacao..."
             onSearch={setTermoPesquisa}
           />

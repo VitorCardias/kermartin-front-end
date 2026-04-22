@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+﻿import { useState, useMemo, useEffect, useRef } from "react";
 import { type TarefaAPI } from "./useTarefa";
 
 export const useCardTarefa = (
@@ -13,90 +13,82 @@ export const useCardTarefa = (
   const [animatingCheck, setAnimatingCheck] = useState(false);
   const statusAntesDeFinalizar = useRef("RequerindoEquipe");
 
-  // Parse de data igual ao CardDemanda
   const parseData = (valor?: string | null): Date | null => {
     if (!valor) return null;
+    if (valor === "Sem data") return null;
+    if (valor.includes("NaN")) return null;
 
     try {
-      if (valor.includes('T')) {
+      if (valor.includes("T")) {
         const iso = new Date(valor);
         return isNaN(iso.getTime()) ? null : iso;
       }
 
       const normalizada = valor.trim();
-      const [dataParte, horaParte] = normalizada.split(' ');
+      const [dataParte, horaParte] = normalizada.split(" ");
       if (!dataParte) return null;
 
-      if (dataParte.includes('-')) {
-        const partes = dataParte.split('-');
+      if (dataParte.includes("-")) {
+        const partes = dataParte.split("-");
         if (partes.length === 3) {
           if (partes[0].length === 4) {
             const [ano, mes, dia] = partes;
-            const [hora = '00', minuto = '00', segundo = '00'] = (horaParte || '').split(':');
+            const [hora = "00", minuto = "00", segundo = "00"] = (horaParte || "").split(":");
             const dt = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo));
             return isNaN(dt.getTime()) ? null : dt;
           }
           const [dia, mes, ano] = partes;
-          const [hora = '00', minuto = '00', segundo = '00'] = (horaParte || '').split(':');
+          const [hora = "00", minuto = "00", segundo = "00"] = (horaParte || "").split(":");
           const dt = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo));
           return isNaN(dt.getTime()) ? null : dt;
         }
       }
 
-      if (dataParte.includes('/')) {
-        const [dia, mes, ano] = dataParte.split('/');
-        const [hora = '00', minuto = '00', segundo = '00'] = (horaParte || '').split(':');
+      if (dataParte.includes("/")) {
+        const [dia, mes, ano] = dataParte.split("/");
+        const [hora = "00", minuto = "00", segundo = "00"] = (horaParte || "").split(":");
         const dt = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo));
         return isNaN(dt.getTime()) ? null : dt;
       }
 
       const fallback = new Date(normalizada);
       return isNaN(fallback.getTime()) ? null : fallback;
-    } catch (error) {
-      console.error('Erro ao fazer parse da data:', valor, error);
+    } catch {
       return null;
     }
   };
 
-  // Calcular dias até vencimento
   const calcularDiasVencimento = (data: string | null | undefined): number => {
     try {
-      const dataVencimento = parseData(data);
-      if (!dataVencimento) return 0;
+      const dataVencimentoDate = parseData(data);
+      if (!dataVencimentoDate) return 0;
 
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
-      dataVencimento.setHours(0, 0, 0, 0);
+      dataVencimentoDate.setHours(0, 0, 0, 0);
 
-      const diffTime = dataVencimento.getTime() - hoje.getTime();
-      const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDias;
-    } catch (error) {
-      console.error('Erro ao calcular dias de vencimento:', error);
+      const diffTime = dataVencimentoDate.getTime() - hoje.getTime();
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    } catch {
       return 0;
     }
   };
 
   const diasVencimento = useMemo(() => calcularDiasVencimento(dataVencimento), [dataVencimento]);
 
-  // Formatador de data para exibição
   const formatarDataExibicao = (data: string | null | undefined): string => {
     if (!data) return "Sem data";
 
     try {
       const dataObj = parseData(data);
-      if (!dataObj) {
-        console.warn('Não foi possível fazer parse da data:', data);
-        return "Sem data";
-      }
+      if (!dataObj) return "Sem data";
 
-      const dia = String(dataObj.getDate()).padStart(2, '0');
-      const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+      const dia = String(dataObj.getDate()).padStart(2, "0");
+      const mes = String(dataObj.getMonth() + 1).padStart(2, "0");
       const ano = dataObj.getFullYear();
 
       return `${dia}/${mes}/${ano}`;
-    } catch (error) {
-      console.error('Erro ao formatar data:', data, error);
+    } catch {
       return "Sem data";
     }
   };
@@ -118,43 +110,29 @@ export const useCardTarefa = (
     }
   }, [tarefa?.id, tarefa?.status]);
 
-  // Determinar status baseado no status da tarefa ou dias de vencimento
-  const obterStatus = (): 'aguardando' | 'andamento' | 'finalizado' | 'atrasada' => {
-    if (checked) return 'finalizado';
-    
-    // Se a tarefa tiver status, usar ele
+  const obterStatus = (): "aguardando" | "andamento" | "finalizado" | "atrasada" => {
+    if (checked) return "finalizado";
+
     if (tarefa?.status) {
       const statusBruto = tarefa.status.toLowerCase();
-      if (statusBruto.includes('finalizada') || statusBruto.includes('finalizado')) return 'finalizado';
-      if (statusBruto.includes('atrasada') || statusBruto.includes('atrasado')) return 'atrasada';
-      if (statusBruto.includes('andamento')) return 'andamento';
-      if (statusBruto.includes('aguardando')) return 'aguardando';
-      if (statusBruto.includes('requerindo')) return 'aguardando';
+      if (statusBruto.includes("finalizada") || statusBruto.includes("finalizado")) return "finalizado";
+      if (statusBruto.includes("atrasada") || statusBruto.includes("atrasado")) return "atrasada";
+      if (statusBruto.includes("andamento")) return "andamento";
+      if (statusBruto.includes("aguardando")) return "aguardando";
+      if (statusBruto.includes("requerindo")) return "aguardando";
     }
 
-    return 'aguardando';
+    return "aguardando";
   };
 
-  // Determinar cor e texto de vencimento
   const obterTextoVencimento = (): { texto: string; cor: string } => {
-
     const status = obterStatus();
-    if (status === 'finalizado') {
-      return { texto: 'Finalizada', cor: '#4CAF50' };
-    }
-    if (diasVencimento < 0) {
-      return { texto: `Vencido`, cor: '#EF4444' };
-    }
-    if (diasVencimento === 0) {
-      return { texto: 'Hoje', cor: '#F59E0B' };
-    }
-    if (diasVencimento === 1) {
-      return { texto: 'Amanhã', cor: '#F59E0B' };
-    }
-    if (diasVencimento <= 3) {
-      return { texto: `${diasVencimento} dias`, cor: '#F59E0B' };
-    }
-    return { texto: `${diasVencimento} dias`, cor: '#64748b' };
+    if (status === "finalizado") return { texto: "Finalizada", cor: "#4CAF50" };
+    if (diasVencimento < 0) return { texto: "Vencido", cor: "#EF4444" };
+    if (diasVencimento === 0) return { texto: "Hoje", cor: "#F59E0B" };
+    if (diasVencimento === 1) return { texto: "Amanha", cor: "#F59E0B" };
+    if (diasVencimento <= 3) return { texto: `${diasVencimento} dias`, cor: "#F59E0B" };
+    return { texto: `${diasVencimento} dias`, cor: "#64748b" };
   };
 
   const vencimentoInfo = useMemo(() => obterTextoVencimento(), [diasVencimento]);

@@ -220,6 +220,7 @@ const AlterarSenhaModal: React.FC<AlterarSenhaModalProps> = ({
         titulo={alert.titulo}
         mensagem={alert.mensagem}
         tipo={alert.tipo}
+        zIndexClass="z-[90]"
         mostrarBotaoCancelar={false}
         onCancel={() => {
           setAlert({ ...alert, isOpen: false });

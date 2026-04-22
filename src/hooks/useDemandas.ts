@@ -79,6 +79,11 @@ const parseDataDemanda = (valor?: string | null): Date | null => {
   return isNaN(fallback.getTime()) ? null : fallback;
 };
 
+const statusDemandaFinalizado = (status?: string | null) => {
+  const normalizado = normalizarTexto(status || "");
+  return normalizado.includes("finalizada") || normalizado.includes("finalizado");
+};
+
 export const useDemandas = () => {
   const perfil = usePerfil();
   const cacheKeyDemandas = `demandas:listagem:${perfil?.idEscritorio || "sem-escritorio"}`;
@@ -197,11 +202,23 @@ export const useDemandas = () => {
         demandasFiltradas.sort((a, b) => {
           const dataA = parseDataDemanda(a.conclusaoPrazo);
           const dataB = parseDataDemanda(b.conclusaoPrazo);
+          const finalizadaA = statusDemandaFinalizado(a.statusDemanda);
+          const finalizadaB = statusDemandaFinalizado(b.statusDemanda);
 
-          const categoriaA = !dataA ? 2 : dataA < hoje ? 0 : 1;
-          const categoriaB = !dataB ? 2 : dataB < hoje ? 0 : 1;
+          const categoriaA = finalizadaA ? 3 : !dataA ? 2 : dataA < hoje ? 0 : 1;
+          const categoriaB = finalizadaB ? 3 : !dataB ? 2 : dataB < hoje ? 0 : 1;
 
           if (categoriaA !== categoriaB) return categoriaA - categoriaB;
+
+          if (categoriaA === 0 && dataA && dataB) {
+            // Vencidas primeiro, mas prioriza as mais proximas do hoje.
+            return dataB.getTime() - dataA.getTime();
+          }
+
+          if (categoriaA === 3) {
+            return a.titulo.localeCompare(b.titulo);
+          }
+
           if (!dataA && !dataB) return a.titulo.localeCompare(b.titulo);
           if (!dataA) return 1;
           if (!dataB) return -1;
@@ -379,4 +396,3 @@ export const useDemandas = () => {
     deletarDemanda,
   };
 };
-
