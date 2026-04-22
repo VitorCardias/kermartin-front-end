@@ -169,6 +169,7 @@ const Agenda: React.FC = () => {
     const ano = currentDate.getFullYear();
     const mes = currentDate.getMonth() + 1;
     const tipoUsuario = perfil?.tipoUsuario || "Escritorio";
+    const isFuncionario = tipoUsuario === "Funcionario";
 
     const { tarefas, loading, buscarTarefasAgenda } = useAgenda(tipoUsuario, ano, mes);
     const { clientesParaFiltro } = useClientesParaFiltro();
@@ -268,7 +269,7 @@ const Agenda: React.FC = () => {
 
             if (demandaSelecionada && tarefa.demandaId !== demandaSelecionada) return false;
             if (clienteSelecionado && tarefa.clienteId !== clienteSelecionado) return false;
-            if (funcionarioSelecionado && tarefa.funcionarioId !== funcionarioSelecionado) return false;
+            if (!isFuncionario && funcionarioSelecionado && tarefa.funcionarioId !== funcionarioSelecionado) return false;
 
             const prioridade = prioridadeNormalizada(tarefa.prioridade);
             if (!prioridadesSelecionadas.includes(prioridade)) return false;
@@ -283,7 +284,20 @@ const Agenda: React.FC = () => {
         funcionarioSelecionado,
         prioridadesSelecionadas,
         clientesParaFiltro,
+        isFuncionario,
     ]);
+
+    const demandasDisponiveisFiltro = useMemo(() => {
+        if (!isFuncionario) return demandas;
+
+        return Array.from(
+            new Map(
+                tarefasComDados
+                    .filter((tarefa) => tarefa.demandaId)
+                    .map((tarefa) => [tarefa.demandaId!, { id: tarefa.demandaId!, titulo: tarefa.demandaTitulo || "Demanda" }])
+            ).values()
+        );
+    }, [demandas, tarefasComDados, isFuncionario]);
 
     const tarefasPorDia = useMemo(() => {
         const mapa = new Map<string, typeof tarefasFiltradas>();
@@ -389,7 +403,7 @@ const Agenda: React.FC = () => {
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className={`grid grid-cols-1 md:grid-cols-2 ${isFuncionario ? "lg:grid-cols-3" : "lg:grid-cols-4"} gap-3`}>
                         <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Demanda</label>
                             <select
@@ -398,7 +412,7 @@ const Agenda: React.FC = () => {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="">Todas</option>
-                                {demandas.map((demanda) => (
+                                {demandasDisponiveisFiltro.map((demanda) => (
                                     <option key={demanda.id} value={demanda.id}>
                                         {demanda.titulo}
                                     </option>
@@ -422,21 +436,23 @@ const Agenda: React.FC = () => {
                             </select>
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Colaborador</label>
-                            <select
-                                value={funcionarioSelecionado}
-                                onChange={(e) => setFuncionarioSelecionado(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="">Todos</option>
-                                {funcionariosParaFiltro.map((funcionario) => (
-                                    <option key={funcionario.id} value={funcionario.id}>
-                                        {funcionario.nomeCompleto}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        {!isFuncionario && (
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Colaborador</label>
+                                <select
+                                    value={funcionarioSelecionado}
+                                    onChange={(e) => setFuncionarioSelecionado(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Todos</option>
+                                    {funcionariosParaFiltro.map((funcionario) => (
+                                        <option key={funcionario.id} value={funcionario.id}>
+                                            {funcionario.nomeCompleto}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         <div className="grid grid-cols-1">
                             <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Prioridade</label>
                             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2">

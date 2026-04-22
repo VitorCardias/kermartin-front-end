@@ -80,12 +80,14 @@ interface FiltrosAvancadosDemandaProps {
   filtrosAtivos: FiltrosDemandaAvancados;
   onAtualizarFiltros: (filtros: Partial<FiltrosDemandaAvancados>) => void;
   onLimparFiltros: () => void;
+  ocultarFiltroFuncionarios?: boolean;
 }
 
 const FiltrosAvancadosDemanda: React.FC<FiltrosAvancadosDemandaProps> = ({
   filtrosAtivos,
   onAtualizarFiltros,
   onLimparFiltros,
+  ocultarFiltroFuncionarios = false,
 }) => {
   const { clientesParaFiltro } = useClientesParaFiltro();
   const { funcionariosParaFiltro } = useFuncionariosParaFiltro();
@@ -113,7 +115,9 @@ const FiltrosAvancadosDemanda: React.FC<FiltrosAvancadosDemandaProps> = ({
     let count = 0;
     if (filtrosAtivos.busca) count++;
     if (filtrosAtivos.clientesIds?.length) count += filtrosAtivos.clientesIds.length;
-    if (filtrosAtivos.funcionariosIds?.length) count += filtrosAtivos.funcionariosIds.length;
+    if (!ocultarFiltroFuncionarios && filtrosAtivos.funcionariosIds?.length) {
+      count += filtrosAtivos.funcionariosIds.length;
+    }
     if (filtrosAtivos.prioridade?.length) count += filtrosAtivos.prioridade.length;
     return count;
   };
@@ -163,15 +167,17 @@ const FiltrosAvancadosDemanda: React.FC<FiltrosAvancadosDemandaProps> = ({
             />
           </div>
 
-          <div className="flex-1 min-w-0">
-            <label className="text-muted font-semibold text-sm uppercase tracking-wide">Colaboradores</label>
-            <MultiSelectDropdown
-              options={opcoesFuncionarios}
-              selectedValues={filtrosAtivos.funcionariosIds || []}
-              onChange={atualizarFuncionarios}
-              placeholder="Selecione os colaboradores"
-            />
-          </div>
+          {!ocultarFiltroFuncionarios && (
+            <div className="flex-1 min-w-0">
+              <label className="text-muted font-semibold text-sm uppercase tracking-wide">Colaboradores</label>
+              <MultiSelectDropdown
+                options={opcoesFuncionarios}
+                selectedValues={filtrosAtivos.funcionariosIds || []}
+                onChange={atualizarFuncionarios}
+                placeholder="Selecione os colaboradores"
+              />
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3">
             <label className="w-full text-muted font-semibold text-sm uppercase tracking-wide">Prioridade</label>

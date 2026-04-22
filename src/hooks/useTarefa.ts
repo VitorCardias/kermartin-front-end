@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { authApi } from "../api/AuthService";
 import { usePerfil } from "./usePerfil";
 import { cacheService } from "../utils/cacheService";
@@ -51,22 +51,80 @@ export const useTarefa = () => {
     cacheService.clear(`demandas:listagem:${escritorioId}`);
   };
 
-  // Função auxiliar para formatar data para exibição
-  const formatarDataExibicao = (dataString: string | null | undefined): string => {
-    if (!dataString) return "Sem data";
-    
-    try {
-      const date = new Date(dataString);
-      const dia = String(date.getDate()).padStart(2, "0");
-      const mes = String(date.getMonth() + 1).padStart(2, "0");
-      const ano = date.getFullYear();
-      return `${dia}/${mes}/${ano}`;
-    } catch {
-      return "Data inválida";
+  const parseData = (valor?: string | null): Date | null => {
+    if (!valor) return null;
+
+    const texto = valor.trim();
+    if (!texto || texto.toLowerCase().includes("nan")) return null;
+
+    if (texto.includes("T")) {
+      const iso = new Date(texto);
+      return isNaN(iso.getTime()) ? null : iso;
     }
+
+    if (texto.includes(" ")) {
+      const [dataParte, horaParte] = texto.split(" ");
+      if (dataParte?.includes("-")) {
+        const partes = dataParte.split("-");
+        if (partes.length === 3) {
+          let dia = "01";
+          let mes = "01";
+          let ano = "1970";
+
+          if (partes[0].length === 4) {
+            [ano, mes, dia] = partes;
+          } else {
+            [dia, mes, ano] = partes;
+          }
+
+          const [hora = "00", minuto = "00", segundo = "00"] = (horaParte || "").split(":");
+          const data = new Date(
+            Number(ano),
+            Number(mes) - 1,
+            Number(dia),
+            Number(hora),
+            Number(minuto),
+            Number(segundo)
+          );
+          return isNaN(data.getTime()) ? null : data;
+        }
+      }
+    }
+
+    if (texto.includes("/")) {
+      const [dataParte, horaParte] = texto.split(" ");
+      const partes = dataParte.split("/");
+      if (partes.length === 3) {
+        const [dia, mes, ano] = partes;
+        const [hora = "00", minuto = "00", segundo = "00"] = (horaParte || "").split(":");
+        const data = new Date(
+          Number(ano),
+          Number(mes) - 1,
+          Number(dia),
+          Number(hora),
+          Number(minuto),
+          Number(segundo)
+        );
+        return isNaN(data.getTime()) ? null : data;
+      }
+    }
+
+    const fallback = new Date(texto);
+    return isNaN(fallback.getTime()) ? null : fallback;
   };
 
-  // Buscar tarefas por contexto (etapa, demanda ou funcionário)
+  const formatarDataExibicao = (dataString: string | null | undefined): string => {
+    if (!dataString) return "Sem data";
+
+    const date = parseData(dataString);
+    if (!date) return "Data invalida";
+
+    const dia = String(date.getDate()).padStart(2, "0");
+    const mes = String(date.getMonth() + 1).padStart(2, "0");
+    const ano = date.getFullYear();
+    return `${dia}/${mes}/${ano}`;
+  };
+
   const buscarTarefas = async (
     contexto: TarefaContexto,
     id: string
@@ -103,7 +161,6 @@ export const useTarefa = () => {
     }
   };
 
-  // Cadastrar tarefa
   const cadastrarTarefa = async (novaTarefa: CreateTarefaPayload): Promise<void> => {
     try {
       await authApi.post("/tarefa-etapa", {
@@ -118,7 +175,6 @@ export const useTarefa = () => {
     }
   };
 
-  // Editar tarefa
   const editarTarefa = async (
     idTarefa: string,
     tarefaEditada: UpdateTarefaPayload
@@ -135,7 +191,6 @@ export const useTarefa = () => {
     }
   };
 
-  // Deletar tarefa
   const deletarTarefa = async (idTarefa: string): Promise<void> => {
     try {
       await authApi.delete(`/tarefa-etapa/${idTarefa}`);
@@ -146,7 +201,6 @@ export const useTarefa = () => {
     }
   };
 
-  // Concluir tarefa (para o contexto de funcionário)
   const concluirTarefa = async (idAtribuicaoTarefa: string): Promise<void> => {
     try {
       await authApi.patch(

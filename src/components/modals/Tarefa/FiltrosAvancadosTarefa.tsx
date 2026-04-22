@@ -95,6 +95,7 @@ interface FiltrosAvancadosTarefaProps {
   demandasOptions: Option[];
   onAtualizarFiltros: (filtros: Partial<FiltrosTarefaAvancados>) => void;
   onLimparFiltros: () => void;
+  ocultarFiltroFuncionarios?: boolean;
 }
 
 const FiltrosAvancadosTarefa: React.FC<FiltrosAvancadosTarefaProps> = ({
@@ -102,6 +103,7 @@ const FiltrosAvancadosTarefa: React.FC<FiltrosAvancadosTarefaProps> = ({
   demandasOptions,
   onAtualizarFiltros,
   onLimparFiltros,
+  ocultarFiltroFuncionarios = false,
 }) => {
   const { clientesParaFiltro } = useClientesParaFiltro();
   const { funcionariosParaFiltro } = useFuncionariosParaFiltro();
@@ -132,7 +134,9 @@ const FiltrosAvancadosTarefa: React.FC<FiltrosAvancadosTarefaProps> = ({
     if (filtrosAtivos.busca) count++;
     if (filtrosAtivos.demandasIds?.length) count += filtrosAtivos.demandasIds.length;
     if (filtrosAtivos.clientesIds?.length) count += filtrosAtivos.clientesIds.length;
-    if (filtrosAtivos.funcionariosIds?.length) count += filtrosAtivos.funcionariosIds.length;
+    if (!ocultarFiltroFuncionarios && filtrosAtivos.funcionariosIds?.length) {
+      count += filtrosAtivos.funcionariosIds.length;
+    }
     if (filtrosAtivos.prioridade?.length) count += filtrosAtivos.prioridade.length;
     return count;
   };
@@ -176,7 +180,7 @@ const FiltrosAvancadosTarefa: React.FC<FiltrosAvancadosTarefaProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${ocultarFiltroFuncionarios ? "xl:grid-cols-3" : "xl:grid-cols-4"} gap-4`}>
           <div className="min-w-0">
             <label className="text-muted font-semibold text-sm uppercase tracking-wide">Demandas</label>
             <MultiSelectDropdown
@@ -197,15 +201,17 @@ const FiltrosAvancadosTarefa: React.FC<FiltrosAvancadosTarefaProps> = ({
             />
           </div>
 
-          <div className="min-w-0">
-            <label className="text-muted font-semibold text-sm uppercase tracking-wide">Colaboradores</label>
-            <MultiSelectDropdown
-              options={opcoesFuncionarios}
-              selectedValues={filtrosAtivos.funcionariosIds || []}
-              onChange={atualizarFuncionarios}
-              placeholder="Selecione os colaboradores"
-            />
-          </div>
+          {!ocultarFiltroFuncionarios && (
+            <div className="min-w-0">
+              <label className="text-muted font-semibold text-sm uppercase tracking-wide">Colaboradores</label>
+              <MultiSelectDropdown
+                options={opcoesFuncionarios}
+                selectedValues={filtrosAtivos.funcionariosIds || []}
+                onChange={atualizarFuncionarios}
+                placeholder="Selecione os colaboradores"
+              />
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3">
             <label className="w-full text-muted font-semibold text-sm uppercase tracking-wide">Prioridade</label>

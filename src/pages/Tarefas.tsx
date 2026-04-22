@@ -9,9 +9,12 @@ import CadastroTarefa from "../components/modals/Tarefa/CadastroTarefa";
 import { useTarefasListagem, type FiltrosTarefaAvancados } from "../Hooks/useTarefasListagem";
 import { useTarefa } from "../Hooks/useTarefa";
 import { authApi } from "../api/AuthService";
+import { usePerfil } from "../Hooks/usePerfil";
 
 const Tarefas: React.FC = () => {
   const location = useLocation();
+  const perfil = usePerfil();
+  const isFuncionario = perfil?.tipoUsuario === "Funcionario";
   const {
     tarefas,
     loading,
@@ -34,8 +37,20 @@ const Tarefas: React.FC = () => {
   const cacheResponsaveisRef = React.useRef<Record<string, string[]>>({});
 
   const demandasOptions = useMemo(
-    () => demandasParaFiltro.map((demanda) => ({ id: demanda.id, label: demanda.titulo })),
-    [demandasParaFiltro]
+    () => {
+      if (isFuncionario) {
+        return Array.from(
+          new Map(
+            tarefas
+              .filter((tarefa) => tarefa.demandaDTO?.id)
+              .map((tarefa) => [tarefa.demandaDTO!.id, { id: tarefa.demandaDTO!.id, label: tarefa.demandaDTO?.titulo || "Demanda" }])
+          ).values()
+        );
+      }
+
+      return demandasParaFiltro.map((demanda) => ({ id: demanda.id, label: demanda.titulo }));
+    },
+    [demandasParaFiltro, isFuncionario, tarefas]
   );
 
   React.useEffect(() => {
@@ -168,7 +183,7 @@ const Tarefas: React.FC = () => {
     if (filtros.status?.length) count += filtros.status.length;
     if (filtros.prioridade?.length) count += filtros.prioridade.length;
     if (filtros.clientesIds?.length) count += filtros.clientesIds.length;
-    if (filtros.funcionariosIds?.length) count += filtros.funcionariosIds.length;
+    if (!isFuncionario && filtros.funcionariosIds?.length) count += filtros.funcionariosIds.length;
     if (filtros.demandasIds?.length) count += filtros.demandasIds.length;
     return count;
   };
@@ -216,6 +231,7 @@ const Tarefas: React.FC = () => {
           demandasOptions={demandasOptions}
           onAtualizarFiltros={handleAtualizarFiltros}
           onLimparFiltros={limparFiltros}
+          ocultarFiltroFuncionarios={isFuncionario}
         />
 
         <StatusFiltro

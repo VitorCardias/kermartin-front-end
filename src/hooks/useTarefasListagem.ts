@@ -106,6 +106,9 @@ export const useTarefasListagem = () => {
     ): Promise<ResultadoBusca<TarefaListagem>> => {
       try {
         const filtrosTarefa = filtros as FiltrosTarefaAvancados;
+        const isFuncionario = perfil?.tipoUsuario === "Funcionario";
+        const filtrosFuncionariosEfetivos =
+          isFuncionario && perfil?.id ? [perfil.id] : (filtrosTarefa.funcionariosIds || []);
 
         const todasDemandas = await cacheService.fetch<DemandaBasica[]>(
           cacheKeyDemandas,
@@ -236,7 +239,7 @@ export const useTarefasListagem = () => {
           );
         }
 
-        if (filtrosTarefa.funcionariosIds && filtrosTarefa.funcionariosIds.length > 0) {
+        if (filtrosFuncionariosEfetivos.length > 0) {
           const tarefasComEquipe = await Promise.all(
             tarefasFiltradas.map(async (tarefa) => {
               const idsRelacionados = new Set<string>();
@@ -268,7 +271,7 @@ export const useTarefasListagem = () => {
 
           tarefasFiltradas = tarefasComEquipe
             .filter(({ idsRelacionados }) =>
-              filtrosTarefa.funcionariosIds!.some((id) => idsRelacionados.has(id))
+              filtrosFuncionariosEfetivos.some((id) => idsRelacionados.has(id))
             )
             .map(({ tarefa }) => tarefa);
         }
@@ -317,7 +320,7 @@ export const useTarefasListagem = () => {
         return { content: [], totalPages: 0, number: 0 };
       }
     },
-    [cacheKeyDemandas, cacheKeyTarefas]
+    [cacheKeyDemandas, cacheKeyTarefas, perfil?.id, perfil?.tipoUsuario]
   );
 
   const {

@@ -96,6 +96,9 @@ export const useDemandas = () => {
     async (pagina: number, filtros: FiltrosListagem, limite: number): Promise<ResultadoBusca<Demanda>> => {
       try {
         const filtrosDemanda = filtros as FiltrosDemandaAvancados;
+        const isFuncionario = perfil?.tipoUsuario === "Funcionario";
+        const filtrosFuncionariosEfetivos =
+          isFuncionario && perfil?.id ? [perfil.id] : (filtrosDemanda.funcionariosIds || []);
 
         const todasAsDemandas = await cacheService.fetch<DemandaAPI[]>(
           cacheKeyDemandas,
@@ -144,8 +147,8 @@ export const useDemandas = () => {
           );
         }
 
-        if (filtrosDemanda.funcionariosIds && filtrosDemanda.funcionariosIds.length > 0) {
-          const funcionariosSelecionados = filtrosDemanda.funcionariosIds!;
+        if (filtrosFuncionariosEfetivos.length > 0) {
+          const funcionariosSelecionados = filtrosFuncionariosEfetivos;
 
           const demandasComEquipe = await Promise.all(
             demandasFiltradas.map(async (demanda) => {
@@ -246,7 +249,7 @@ export const useDemandas = () => {
         return { content: [], totalPages: 0, number: 0 };
       }
     },
-    [cacheKeyDemandas]
+    [cacheKeyDemandas, perfil?.id, perfil?.tipoUsuario]
   );
 
   const {

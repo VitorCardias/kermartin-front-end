@@ -9,9 +9,12 @@ import FiltrosAvancadosDemanda from "../components/modals/Demanda/FiltrosAvancad
 import { useDemandas, type FiltrosDemandaAvancados } from "../Hooks/useDemandas";
 import StatusFiltro from "../components/StatusFiltro";
 import { authApi } from "../api/AuthService";
+import { usePerfil } from "../Hooks/usePerfil";
 
 const Demandas: React.FC = () => {
   const location = useLocation();
+  const perfil = usePerfil();
+  const isFuncionario = perfil?.tipoUsuario === "Funcionario";
   const {
     demandas,
     loading,
@@ -148,7 +151,7 @@ const Demandas: React.FC = () => {
     if (filtros.status?.length) count += filtros.status.length;
     if (filtros.prioridade?.length) count += filtros.prioridade.length;
     if (filtros.clientesIds?.length) count += filtros.clientesIds.length;
-    if (filtros.funcionariosIds?.length) count += filtros.funcionariosIds.length;
+    if (!isFuncionario && filtros.funcionariosIds?.length) count += filtros.funcionariosIds.length;
     return count;
   };
 
@@ -194,6 +197,7 @@ const Demandas: React.FC = () => {
             filtrosAtivos={filtros}
             onAtualizarFiltros={handleAtualizarFiltros}
             onLimparFiltros={limparFiltros}
+            ocultarFiltroFuncionarios={isFuncionario}
           />
         </div>
                 <StatusFiltro
