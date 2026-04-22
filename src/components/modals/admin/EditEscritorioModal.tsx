@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StatusConta } from '../../types/StatusConta';
+import { StatusConta } from '../../../types/StatusConta';
 
 interface EscritorioEditData {
   id: string;

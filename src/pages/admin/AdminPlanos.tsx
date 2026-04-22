@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authApi } from '../../api/AuthService';
-import { EditPlanoModal } from '../../components/modals/EditPlanoModal';
-import { CreatePlanoModal } from '../../components/modals/CreatePlanoModal';
+import { EditPlanoModal } from '../../components/modals/admin/EditPlanoModal';
+import { CreatePlanoModal } from '../../components/modals/admin/CreatePlanoModal';
 
 
 interface IPlanoAdmin {

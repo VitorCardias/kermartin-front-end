@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { authApi } from '../../api/AuthService'; // Ajuste o caminho se necessário
-import { EditEscritorioModal } from '../../components/modals/EditEscritorioModal';
-import { CreateEscritorioModal } from '../../components/modals/CreateEscritorioModal';
+import { EditEscritorioModal } from '../../components/modals/admin/EditEscritorioModal';
+import { CreateEscritorioModal } from '../../components/modals/admin/CreateEscritorioModal';
 import type { StatusConta } from '../../types/StatusConta';
-import { ChangePasswordModal } from '../../components/modals/ChangeEscritorioPasswordModal';
+import { ChangePasswordModal } from '../../components/modals/admin/ChangeEscritorioPasswordModal';
 
 // Interface para os dados do escritório
 interface EscritorioAdmin {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { EscritorioSelectOption, PlanoSelectOption } from "../../types/AssinaturaTypes";
-import { authApi } from "../../api/AuthService";
-import { AssinaturaService } from "../../service/AssinaturaService";
+import type { EscritorioSelectOption, PlanoSelectOption } from "../../../types/AssinaturaTypes";
+import { authApi } from "../../../api/AuthService";
+import { AssinaturaService } from "../../../service/AssinaturaService";
 
 interface Props {
     isOpen: boolean;
