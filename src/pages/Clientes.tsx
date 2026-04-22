@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Titulo from "../components/Titulo";
-import Pesquisar from "../components/filtros/FiltroPesquisar";
 import CardCliente from "../components/CardCliente";
 import CadastroCliente from "../components/modals/Cliente/CadastroCliente";
 import EditarCliente from "../components/modals/Cliente/EditarCliente";
 import { useClientes } from "../Hooks/useClientes";
 import type { Cliente } from "../Hooks/useClientes";
 import { authApi } from "../api/AuthService";
+import { TipoCliente } from "../types/TiposClientes";
 
 const parseData = (valor?: string | null): Date | null => {
   if (!valor) return null;
@@ -43,9 +43,23 @@ const Clientes: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null);
   const [termoPesquisa, setTermoPesquisa] = useState("");
+  const [tiposClienteSelecionados, setTiposClienteSelecionados] = useState<Array<"PF" | "PJ">>([]);
   const [resumoDemandasPorCliente, setResumoDemandasPorCliente] = useState<
     Record<string, { total: number; atrasadas: number }>
   >({});
+
+  const mapearTipoClienteSigla = (tipo?: string | null): "PF" | "PJ" | undefined => {
+    const tipoNormalizado = String(tipo || "").toLowerCase();
+    if (tipoNormalizado === TipoCliente.PessoaFisica || tipoNormalizado.includes("fisica")) return "PF";
+    if (tipoNormalizado === TipoCliente.PessoaJuridica || tipoNormalizado.includes("juridica")) return "PJ";
+    return undefined;
+  };
+
+  const toggleTipoCliente = (tipo: "PF" | "PJ") => {
+    setTiposClienteSelecionados((prev) =>
+      prev.includes(tipo) ? prev.filter((valor) => valor !== tipo) : [...prev, tipo]
+    );
+  };
 
   useEffect(() => {
     const carregarResumo = async () => {
@@ -94,11 +108,19 @@ const Clientes: React.FC = () => {
   const clientesFiltrados = useMemo(
     () =>
       clientes.filter(
-        (cliente) =>
-          cliente.nome.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
-          cliente.emailContato.toLowerCase().includes(termoPesquisa.toLowerCase())
+        (cliente) => {
+          const correspondePesquisa =
+            cliente.nome.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+            cliente.emailContato.toLowerCase().includes(termoPesquisa.toLowerCase());
+
+          if (!correspondePesquisa) return false;
+          if (tiposClienteSelecionados.length === 0) return true;
+
+          const siglaTipoCliente = mapearTipoClienteSigla(cliente.tipoCliente);
+          return !!siglaTipoCliente && tiposClienteSelecionados.includes(siglaTipoCliente);
+        }
       ),
-    [clientes, termoPesquisa]
+    [clientes, termoPesquisa, tiposClienteSelecionados]
   );
 
   const LoadingCards = () => (
@@ -133,11 +155,35 @@ const Clientes: React.FC = () => {
           </button>
         </div>
         <div className="w-full sm:w-4/5 bg-white rounded-lg shadow-md p-4 sm:p-6 flex flex-col">
-          <Pesquisar
-            label="Pesquisar Cliente:"
-            placeholder="Digite o nome do cliente..."
-            onSearch={setTermoPesquisa}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
+            <div className="lg:col-span-2 min-w-0">
+              <label className="text-muted font-semibold text-sm uppercase tracking-wide">Pesquisar cliente</label>
+              <input
+                type="text"
+                value={termoPesquisa}
+                placeholder="Digite o nome ou email do cliente..."
+                onChange={(e) => setTermoPesquisa(e.target.value)}
+                className="mt-2 w-full px-4 py-2 border border-gray-300 rounded-lg text-main placeholder-muted focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <label className="text-muted font-semibold text-sm uppercase tracking-wide">Tipo de cliente</label>
+              <div className="flex flex-row gap-4">
+                {(["PF", "PJ"] as const).map((tipo) => (
+                  <label key={tipo} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={tiposClienteSelecionados.includes(tipo)}
+                      onChange={() => toggleTipoCliente(tipo)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue focus:ring-blue cursor-pointer"
+                    />
+                    {tipo}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
         <div className="w-full flex flex-col gap-3 sm:gap-4 items-center justify-center">
           {loading ? (

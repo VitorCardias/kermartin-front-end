@@ -224,7 +224,6 @@ const Tarefas: React.FC = () => {
             { label: "Aguardando", value: "RequerindoEquipe" },
             { label: "Finalizada", value: "Finalizada" },
             { label: "Atrasada", value: "Atrasada" },
-            { label: "Cancelada", value: "Cancelada" },
           ]}
           valorAtivo={filtros.status?.[0]}
           onChange={handleStatusFiltro}

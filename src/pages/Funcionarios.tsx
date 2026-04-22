@@ -158,7 +158,7 @@ const Funcionarios: React.FC = () => {
         <div className="w-full sm:w-4/5 bg-white rounded-lg shadow-md p-4 sm:p-6 flex flex-col">
           <Pesquisar
             label="Pesquisar Colaborador:"
-            placeholder="Digite o nome, email ou qualificacao..."
+            placeholder="Digite o nome, email ou qualificação..."
             onSearch={setTermoPesquisa}
           />
         </div>
@@ -169,7 +169,7 @@ const Funcionarios: React.FC = () => {
           ) : funcionariosFiltrados.length === 0 ? (
             <div className="w-full sm:w-4/5 text-center py-8 bg-white rounded-lg shadow-md">
               <p className="text-muted text-sm sm:text-base">
-                {termoPesquisa ? "Nenhum funcionario encontrado" : "Nenhum funcionario cadastrado"}
+                {termoPesquisa ? "Nenhum funcionário encontrado" : "Nenhum funcionário cadastrado"}
               </p>
             </div>
           ) : (

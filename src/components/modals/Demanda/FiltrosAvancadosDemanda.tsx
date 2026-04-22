@@ -146,7 +146,7 @@ const FiltrosAvancadosDemanda: React.FC<FiltrosAvancadosDemandaProps> = ({
           <input
             type="text"
             value={busca}
-            placeholder="Digite o titulo, cliente ou descricao..."
+            placeholder="Digite o título, cliente ou descrição..."
             onChange={(e) => setBusca(e.target.value)}
             className="mt-2 w-full px-4 py-2 border border-gray-300 rounded-lg text-main placeholder-muted focus:outline-none focus:ring-2 focus:ring-blue focus:border-transparent"
           />
