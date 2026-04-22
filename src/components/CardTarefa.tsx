@@ -62,7 +62,13 @@ const CardTarefa: React.FC<CardTarefaProps> = ({
     const { 
         expandido, checked, animatingCheck, textoVencimento, corVencimento,
         obterStatus, toggleExpandir, toggleFinalizada, formatarDataExibicao
-    } = useCardTarefa(dataVencimentoAtual, responsaveisAtual, tarefaAtual, handleStatusChange);
+    } = useCardTarefa(
+        dataVencimentoAtual,
+        responsaveisAtual,
+        tarefaAtual,
+        handleStatusChange,
+        membrosEquipe?.length || 0
+    );
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editarModalOpen, setEditarModalOpen] = useState(false);

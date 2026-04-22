@@ -32,7 +32,7 @@ const Navbar: React.FC = () => {
             { path: "/", label: "Tarefas" },
             { path: "/demanda", label: "Demandas" },
             { path: "/cliente", label: "Clientes" },
-            ...(isFuncionario ? [] : [{ path: "/funcionario", label: "Funcionários" }]),
+            ...(isFuncionario ? [] : [{ path: "/funcionario", label: "Colaboradores" }]),
             { path: "/agenda", label: "Agenda" },
           ];
 

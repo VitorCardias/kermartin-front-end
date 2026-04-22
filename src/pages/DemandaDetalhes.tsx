@@ -127,6 +127,33 @@ const DemandaDetalhes: React.FC = () => {
           return pertenceEtapaSelecionada || pertenceSemEtapa;
         });
 
+  const porcentagemEtapaMap = React.useMemo(() => {
+    const agrupado = new Map<string, { soma: number; quantidade: number }>();
+
+    tarefas.forEach((tarefa) => {
+      const etapaId = tarefa.etapaDemandaDTO?.id;
+      if (!etapaId) return;
+
+      const percentualTarefa =
+        tarefa.status?.toLowerCase().includes("finalizad")
+          ? 100
+          : Math.min(Math.max(tarefa.porcentagemConclusao || 0, 0), 100);
+
+      const atual = agrupado.get(etapaId) || { soma: 0, quantidade: 0 };
+      agrupado.set(etapaId, {
+        soma: atual.soma + percentualTarefa,
+        quantidade: atual.quantidade + 1,
+      });
+    });
+
+    const resultado = new Map<string, number>();
+    agrupado.forEach((valor, etapaId) => {
+      resultado.set(etapaId, Math.round(valor.soma / valor.quantidade));
+    });
+
+    return resultado;
+  }, [tarefas]);
+
   const handleModalEtapaClose = () => {
     setIsModalEtapaOpen(false);
   };
@@ -171,12 +198,16 @@ const DemandaDetalhes: React.FC = () => {
     const tarefaSelecionada = tarefas.find((tarefa) => tarefa.id === tarefaId);
     if (!tarefaSelecionada) return;
 
+    const novaPorcentagem = novoStatus.toLowerCase().includes("finalizad")
+      ? 100
+      : 0;
+
     await editarTarefa(tarefaId, {
       titulo: tarefaSelecionada.titulo,
       descricao: tarefaSelecionada.descricao ?? null,
       prioridade: tarefaSelecionada.prioridade,
       status: novoStatus,
-      porcentagemConclusao: tarefaSelecionada.porcentagemConclusao,
+      porcentagemConclusao: novaPorcentagem,
       inicioPrazo: tarefaSelecionada.inicioPrazo ?? null,
       conclusaoPrazo: tarefaSelecionada.conclusaoPrazo ?? null,
       etapaDemandaDTO: tarefaSelecionada.etapaDemandaDTO ?? null,
@@ -352,7 +383,10 @@ const DemandaDetalhes: React.FC = () => {
               etapas.map((etapa, indice) => (
                 <CardEtapa
                   key={etapa.id}
-                  etapa={etapa}
+                  etapa={{
+                    ...etapa,
+                    porcentagemConclusao: porcentagemEtapaMap.get(etapa.id) ?? etapa.porcentagemConclusao,
+                  }}
                   indice={indice}
                   isSelected={etapaSelecionadaIds.has(etapa.id)}
                   onClick={handleEtapaClick}

@@ -144,14 +144,14 @@ const Funcionarios: React.FC = () => {
       <div className="flex flex-col justify-center items-center gap-3 sm:gap-4 p-3 sm:p-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full sm:w-4/5 mt-4 sm:mt-5 mb-4 sm:mb-5 gap-3 sm:gap-0">
           <div className="flex flex-col gap-1">
-            <Titulo tamanho="text-xl sm:text-2xl">Gerenciamento de Funcionarios</Titulo>
-            <p className="text-muted text-xs sm:text-sm">Total de {funcionarios.length} funcionarios cadastrados</p>
+            <Titulo tamanho="text-xl sm:text-2xl">Gerenciamento de Colaboradores</Titulo>
+            <p className="text-muted text-xs sm:text-sm">Total de {funcionarios.length} colaboradores cadastrados</p>
           </div>
           <button
             className="text-xs sm:text-sm bg-primary text-white px-3 sm:px-4 py-2 rounded hover:brightness-110 transition hover:-translate-y-1 cursor-pointer whitespace-nowrap w-full sm:w-auto"
             onClick={() => setModalCadastroOpen(true)}
           >
-            Cadastrar Funcionario
+            Cadastrar Colaborador
           </button>
         </div>
 

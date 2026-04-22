@@ -5,7 +5,8 @@ export const useCardTarefa = (
   dataVencimento: string | null | undefined,
   _responsaveis: string[],
   tarefa?: TarefaAPI,
-  onStatusChange?: (novoStatus: string) => Promise<void>
+  onStatusChange?: (novoStatus: string) => Promise<void>,
+  quantidadeMembrosEquipe: number = 0
 ) => {
   const [expandido, setExpandido] = useState(false);
   const [checked, setChecked] = useState(false);
@@ -170,6 +171,21 @@ export const useCardTarefa = (
     }, 600);
   };
 
+  const resolverStatusAoDesfinalizar = (): string => {
+    const dataLimite = parseData(dataVencimento);
+    const agora = new Date();
+
+    if (dataLimite && dataLimite.getTime() < agora.getTime()) {
+      return "Atrasada";
+    }
+
+    if (quantidadeMembrosEquipe > 0) {
+      return "EmAndamento";
+    }
+
+    return "RequerindoEquipe";
+  };
+
   const toggleFinalizada = async () => {
     const novoChecked = !checked;
     const statusAtual = tarefa?.status;
@@ -178,7 +194,9 @@ export const useCardTarefa = (
       statusAntesDeFinalizar.current = statusAtual;
     }
 
-    const novoStatus = novoChecked ? "Finalizada" : statusAntesDeFinalizar.current || "RequerindoEquipe";
+    const novoStatus = novoChecked
+      ? "Finalizada"
+      : resolverStatusAoDesfinalizar() || statusAntesDeFinalizar.current || "RequerindoEquipe";
 
     toggleChecked(novoChecked);
 

@@ -42,10 +42,23 @@ export const useEtapas = (idDemanda: string) => {
         }
       );
       
-      console.log("Resposta de etapas:", response.data);
-      
       if (response.data && response.data.content) {
-        setEtapas(response.data.content);
+        setEtapas((prev) => {
+          const proximaLista = response.data.content;
+          const ordemAnterior = new Map(prev.map((etapa, index) => [etapa.id, index]));
+          const ordemAtual = new Map(proximaLista.map((etapa, index) => [etapa.id, index]));
+
+          return [...proximaLista].sort((a, b) => {
+            const ordemA = ordemAnterior.get(a.id);
+            const ordemB = ordemAnterior.get(b.id);
+
+            if (ordemA !== undefined && ordemB !== undefined) return ordemA - ordemB;
+            if (ordemA !== undefined) return -1;
+            if (ordemB !== undefined) return 1;
+
+            return (ordemAtual.get(a.id) ?? 0) - (ordemAtual.get(b.id) ?? 0);
+          });
+        });
         setTotalPaginas(response.data.totalPages);
       } else {
         console.warn("Resposta vazia ou sem estrutura esperada");
@@ -80,11 +93,7 @@ export const useEtapas = (idDemanda: string) => {
         conclusaoPrazo: formatarDataParaAPI(etapaPayload.conclusaoPrazo),
       };
 
-      console.log("Enviando etapa formatada:", etapaFormatada);
-
       const response = await authApi.post<EtapaAPI>("/etapa-demanda", etapaFormatada);
-      
-      console.log("Resposta do cadastro:", response);
 
       // Aguarda um pouco antes de buscar para garantir que foi persistido no servidor
       setTimeout(() => {

@@ -198,12 +198,12 @@ const FiltrosAvancadosTarefa: React.FC<FiltrosAvancadosTarefaProps> = ({
           </div>
 
           <div className="min-w-0">
-            <label className="text-muted font-semibold text-sm uppercase tracking-wide">Funcionarios</label>
+            <label className="text-muted font-semibold text-sm uppercase tracking-wide">Colaboradores</label>
             <MultiSelectDropdown
               options={opcoesFuncionarios}
               selectedValues={filtrosAtivos.funcionariosIds || []}
               onChange={atualizarFuncionarios}
-              placeholder="Selecione os funcionarios"
+              placeholder="Selecione os colaboradores"
             />
           </div>
 

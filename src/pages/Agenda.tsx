@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { authApi } from "../api/AuthService";
 import { useAgenda } from "../Hooks/useAgenda";
@@ -6,6 +6,8 @@ import { useClientesParaFiltro } from "../Hooks/useClientesParaFiltro";
 import { useFuncionariosParaFiltro } from "../Hooks/useFuncionariosParaFiltro";
 import { usePerfil } from "../Hooks/usePerfil";
 import CadastroTarefa from "../components/modals/Tarefa/CadastroTarefa";
+import EditarTarefa from "../components/modals/Tarefa/EditarTarefa";
+import type { TarefaAPI } from "../Hooks/useTarefa";
 
 type DemandaFiltro = {
     id: string;
@@ -19,7 +21,7 @@ type DemandaFiltro = {
 const monthNames = [
     "Janeiro",
     "Fevereiro",
-    "Março",
+    "MarÃ§o",
     "Abril",
     "Maio",
     "Junho",
@@ -91,6 +93,22 @@ const toDateKey = (date: Date) => {
     return `${ano}-${mes}-${dia}`;
 };
 
+const toDateOnly = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const formatarDataHora = (valor?: string | null) => {
+    const data = parseData(valor);
+    if (!data) return "Sem prazo";
+
+    const dia = String(data.getDate()).padStart(2, "0");
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const ano = data.getFullYear();
+    const horas = String(data.getHours()).padStart(2, "0");
+    const minutos = String(data.getMinutes()).padStart(2, "0");
+
+    return `${dia}/${mes}/${ano} ${horas}:${minutos}`;
+};
+
 const prioridadeNormalizada = (valor?: string | null) => {
     const prioridade = normalizarTexto(valor);
     if (prioridade.includes("alta")) return "alta";
@@ -115,7 +133,7 @@ const corPrioridade = (prioridade?: string | null) => {
             dot: "bg-amber-400",
             badge: "bg-amber-100 text-amber-800 border-amber-300",
             card: "border-l-amber-400",
-            label: "Média",
+            label: "MÃ©dia",
         };
     }
 
@@ -145,13 +163,14 @@ const Agenda: React.FC = () => {
     const [demandas, setDemandas] = useState<DemandaFiltro[]>([]);
     const [tarefaExpandida, setTarefaExpandida] = useState<string | null>(null);
     const [cadastroTarefaAberto, setCadastroTarefaAberto] = useState(false);
+    const [tarefaParaEditar, setTarefaParaEditar] = useState<TarefaAPI | null>(null);
 
 
     const ano = currentDate.getFullYear();
     const mes = currentDate.getMonth() + 1;
     const tipoUsuario = perfil?.tipoUsuario || "Escritorio";
 
-    const { tarefas, loading } = useAgenda(tipoUsuario, ano, mes);
+    const { tarefas, loading, buscarTarefasAgenda } = useAgenda(tipoUsuario, ano, mes);
     const { clientesParaFiltro } = useClientesParaFiltro();
     const { funcionariosParaFiltro } = useFuncionariosParaFiltro();
 
@@ -197,28 +216,38 @@ const Agenda: React.FC = () => {
                 const demandaId = tarefa.demandaDTO?.id;
                 const demandaInfo = demandaId ? demandasMap.get(demandaId) : undefined;
                 const dataReferencia = parseData(tarefa.conclusaoPrazo) ?? parseData(tarefa.inicioPrazo);
+                const inicioRaw = parseData(tarefa.inicioPrazo) ?? dataReferencia;
+                const fimRaw = parseData(tarefa.conclusaoPrazo) ?? dataReferencia;
+                const dataInicio = inicioRaw && fimRaw && inicioRaw > fimRaw ? fimRaw : inicioRaw;
+                const dataFim = inicioRaw && fimRaw && inicioRaw > fimRaw ? inicioRaw : fimRaw;
 
                 return {
                     ...tarefa,
                     demandaId,
                     demandaTitulo: demandaInfo?.titulo || tarefa.demandaDTO?.titulo || "",
                     clienteId: demandaInfo?.clienteDto?.id || "",
+                    clienteNome:
+                        clientesParaFiltro.find((cliente) => cliente.id === demandaInfo?.clienteDto?.id)?.nome || "",
                     funcionarioId: tarefa.criador?.id || "",
                     funcionarioNome:
                         funcionariosParaFiltro.find((funcionario) => funcionario.id === tarefa.criador?.id)?.nomeCompleto ||
                         "",
                     dataReferencia,
+                    dataInicio,
+                    dataFim,
                 };
             })
             .filter((tarefa) => {
-                if (!tarefa.dataReferencia) return false;
+                if (!tarefa.dataInicio || !tarefa.dataFim) return false;
 
-                return (
-                    tarefa.dataReferencia.getMonth() === currentDate.getMonth() &&
-                    tarefa.dataReferencia.getFullYear() === currentDate.getFullYear()
-                );
+                const inicio = toDateOnly(tarefa.dataInicio);
+                const fim = toDateOnly(tarefa.dataFim);
+                const primeiroDiaMes = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                const ultimoDiaMes = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+                return inicio <= ultimoDiaMes && fim >= primeiroDiaMes;
             });
-    }, [tarefas, demandasMap, funcionariosParaFiltro, currentDate]);
+    }, [tarefas, demandasMap, funcionariosParaFiltro, clientesParaFiltro, currentDate]);
 
     const tarefasFiltradas = useMemo(() => {
         const buscaNormalizada = normalizarTexto(busca);
@@ -260,10 +289,17 @@ const Agenda: React.FC = () => {
         const mapa = new Map<string, typeof tarefasFiltradas>();
 
         tarefasFiltradas.forEach((tarefa) => {
-            if (!tarefa.dataReferencia) return;
-            const chave = toDateKey(tarefa.dataReferencia);
-            const listaAtual = mapa.get(chave) || [];
-            mapa.set(chave, [...listaAtual, tarefa]);
+            if (!tarefa.dataInicio || !tarefa.dataFim) return;
+
+            const cursor = toDateOnly(tarefa.dataInicio);
+            const limite = toDateOnly(tarefa.dataFim);
+
+            while (cursor <= limite) {
+                const chave = toDateKey(cursor);
+                const listaAtual = mapa.get(chave) || [];
+                mapa.set(chave, [...listaAtual, tarefa]);
+                cursor.setDate(cursor.getDate() + 1);
+            }
         });
 
         return mapa;
@@ -309,9 +345,14 @@ const Agenda: React.FC = () => {
         setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
         setSelectedDate(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
     };
-    const handleCadastroTarefaSuccess = () => {
-        // Recarregar as tarefas da agenda
+    const handleCadastroTarefaSuccess = async () => {
         setCadastroTarefaAberto(false);
+        await buscarTarefasAgenda();
+    };
+
+    const handleEditarTarefaSuccess = async () => {
+        setTarefaParaEditar(null);
+        await buscarTarefasAgenda();
     };
 
     const togglePrioridade = (prioridade: string) => {
@@ -344,7 +385,7 @@ const Agenda: React.FC = () => {
                             type="text"
                             value={busca}
                             onChange={(e) => setBusca(e.target.value)}
-                            placeholder="Título, descrição ou cliente"
+                            placeholder="Tí­tulo, descrição ou cliente"
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
@@ -382,7 +423,7 @@ const Agenda: React.FC = () => {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Funcionário</label>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase">Colaborador</label>
                             <select
                                 value={funcionarioSelecionado}
                                 onChange={(e) => setFuncionarioSelecionado(e.target.value)}
@@ -441,7 +482,7 @@ const Agenda: React.FC = () => {
                         <button
                             onClick={handlePreviousMonth}
                             className="p-2 hover:bg-gray-100 rounded-md transition"
-                            title="Mês anterior"
+                            title="MÃªs anterior"
                         >
                             <ChevronLeft size={20} className="text-gray-700" />
                         </button>
@@ -454,7 +495,7 @@ const Agenda: React.FC = () => {
                         <button
                             onClick={handleNextMonth}
                             className="p-2 hover:bg-gray-100 rounded-md transition"
-                            title="Próximo mês"
+                            title="PrÃ³ximo mÃªs"
                         >
                             <ChevronRight size={20} className="text-gray-700" />
                         </button>
@@ -581,7 +622,7 @@ const Agenda: React.FC = () => {
                                                 isSelected ? "ring-2 ring-inset ring-blue-500" : ""
                                             } ${isToday ? "bg-blue-100" : "hover:bg-gray-50"}`}
                                         >
-                                            {/* Número do dia */}
+                                            {/* NÃºmero do dia */}
                                             <div className={`font-semibold text-sm ${
                                                 isToday ? "text-white bg-blue-500 rounded-full w-8 h-8 flex items-center justify-center" : "text-gray-800"
                                             }`}>
@@ -633,26 +674,46 @@ const Agenda: React.FC = () => {
 
                             return (
                                 <div key={tarefa.id} className="border border-gray-200 rounded-md bg-white overflow-hidden ">
-                                    <button
-                                        type="button"
-                                        onClick={() => setTarefaExpandida(estaExpandida ? null : tarefa.id)}
-                                        className={`w-full px-3 py-2.5 border-l-4 ${cor.card} text-left hover:bg-gray-50 transition`}
-                                    >
-                                        <div className="flex items-center justify-between gap-2 w-full">
-                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <div className={`w-full px-3 py-2.5 border-l-4 ${cor.card} hover:bg-gray-50 transition`}>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setTarefaExpandida(estaExpandida ? null : tarefa.id)}
+                                                className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                                            >
                                                 <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${cor.dot}`} />
                                                 <span className="text-sm text-gray-800 truncate">{tarefa.titulo}</span>
+                                            </button>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setTarefaParaEditar(tarefa as unknown as TarefaAPI);
+                                                    }}
+                                                    className="text-xs bg-primary text-white px-3 py-1.5 rounded hover:brightness-110 transition whitespace-nowrap"
+                                                >
+                                                    Editar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTarefaExpandida(estaExpandida ? null : tarefa.id)}
+                                                    className="p-1 rounded hover:bg-gray-200 transition"
+                                                    aria-label="Expandir descricao da tarefa"
+                                                >
+                                                    <ChevronDown
+                                                        size={18}
+                                                        className={`text-gray-600 transition-transform ${estaExpandida ? "rotate-180" : ""}`}
+                                                    />
+                                                </button>
                                             </div>
-                                            <ChevronDown
-                                                size={18}
-                                                className={`text-gray-600 flex-shrink-0 transition-transform ${estaExpandida ? "rotate-180" : ""}`}
-                                            />
                                         </div>
-                                        
-                                        <div className="flex flex-col md:flex-row w-full justify-start gap-2 mt-2 text-xs text-gray-600">
-                                            <span>Prazo: {tarefa.conclusaoPrazo}</span>
+                                        <div className="flex flex-col sm:flex-row w-full justify-start gap-2 sm:gap-4 mt-2 text-xs text-gray-600">
+                                            <span>Prazo: {formatarDataHora(tarefa.conclusaoPrazo)}</span>
+                                            <span className="truncate">Cliente: {tarefa.clienteNome || "Nao vinculado"}</span>
                                         </div>
-                                    </button>
+                                    </div>
+
 
                                     {estaExpandida && (
                                         <div className="px-3 py-3 border-t border-gray-200 bg-gray-50 ">    
@@ -678,8 +739,22 @@ const Agenda: React.FC = () => {
                 onSuccess={handleCadastroTarefaSuccess}
                 contexto="tarefas"
             />
+            {tarefaParaEditar && (
+                <EditarTarefa
+                    isOpen={!!tarefaParaEditar}
+                    onClose={() => setTarefaParaEditar(null)}
+                    tarefa={tarefaParaEditar}
+                    onSuccess={handleEditarTarefaSuccess}
+                />
+            )}
         </div>
     );
 };
 
 export default Agenda;
+
+
+
+
+
+
