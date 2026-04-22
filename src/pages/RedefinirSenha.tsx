@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { authService } from '../api/AuthService';
 import { useToast } from '../components/Toast';
@@ -12,14 +12,27 @@ export default function RedefinirSenha() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const token = searchParams.get('token');
+  const token = useMemo(() => {
+    const rawToken = searchParams.get('token');
+    if (!rawToken) return null;
+    // Aceita formato JWT/base64url para impedir injecoes de conteudo inesperado
+    return /^[A-Za-z0-9._-]+$/.test(rawToken) ? rawToken : null;
+  }, [searchParams]);
 
   useEffect(() => {
+    const hasTokenInUrl = searchParams.has('token');
+
+    if (hasTokenInUrl) {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('token');
+      window.history.replaceState(null, document.title, `${cleanUrl.pathname}${cleanUrl.search}`);
+    }
+
     if (!token) {
       setErro('Token invalido ou expirado. Solicite um novo link.');
       window.setTimeout(() => navigate('/esqueci-senha'), 2500);
     }
-  }, [token, navigate]);
+  }, [token, navigate, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

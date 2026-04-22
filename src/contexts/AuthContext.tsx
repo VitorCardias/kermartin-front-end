@@ -1,9 +1,11 @@
 import React, { createContext, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { isAxiosError } from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { authApi, authService, setShowToastCallback } from '../api/AuthService';
 import { useToast } from '../components/Toast';
-import { type Usuario, type CadastroParams } from '../types/auth';
+import { type CadastroParams, type Usuario } from '../types/auth';
 import { cacheService } from '../utils/cacheService';
+import { authStorage } from '../utils/authStorage';
 
 type PerfilUsuario = {
   id: string;
@@ -17,6 +19,10 @@ type TokenPayload = {
   sub?: string;
   roles?: string[];
   exp?: number;
+};
+
+type ApiErrorPayload = {
+  message?: string;
 };
 
 interface AuthContextType {
@@ -37,11 +43,19 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-const PERFIL_STORAGE_KEY = 'perfilUsuario';
-
 interface AuthProviderProps {
   children: ReactNode;
 }
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (isAxiosError<ApiErrorPayload>(error)) {
+    return error.response?.data?.message || error.message || fallback;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return fallback;
+};
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
@@ -65,7 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const tokenExpirado = (token: string) => {
+  const tokenExpirado = (token: string): boolean => {
     try {
       const decoded = jwtDecode<TokenPayload>(token);
       if (!decoded.exp) return false;
@@ -76,28 +90,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const salvarPerfilLocal = (perfilUsuario: PerfilUsuario) => {
-    localStorage.setItem(PERFIL_STORAGE_KEY, JSON.stringify(perfilUsuario));
+  const salvarPerfilLocal = (perfilUsuario: PerfilUsuario): void => {
+    authStorage.setProfile(perfilUsuario);
   };
 
-  const carregarPerfilLocal = (): PerfilUsuario | null => {
-    try {
-      const raw = localStorage.getItem(PERFIL_STORAGE_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw) as PerfilUsuario;
-    } catch {
-      return null;
-    }
-  };
+  const carregarPerfilLocal = (): PerfilUsuario | null => authStorage.getProfile<PerfilUsuario>();
 
   const buscarPerfil = useCallback(async (username: string) => {
     try {
       const response = await authApi.get<PerfilUsuario>(`/usuario/perfil/${username}`);
-      setPerfil(response.data);
-      salvarPerfilLocal(response.data);
+      const perfilResponse = response.data;
+
+      if (perfilResponse.username !== username) {
+        throw new Error('Perfil recebido nao corresponde ao usuario autenticado');
+      }
+
+      setPerfil(perfilResponse);
+      salvarPerfilLocal(perfilResponse);
     } catch {
       setPerfil(null);
-      localStorage.removeItem(PERFIL_STORAGE_KEY);
+      authStorage.clearProfile();
     }
   }, []);
 
@@ -113,29 +125,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
 
       try {
-        let token = localStorage.getItem('token');
-        const refreshToken = localStorage.getItem('refreshToken');
+        let token = authStorage.getAccessToken();
+        const refreshToken = authStorage.getRefreshToken();
 
         if (!token || !refreshToken) {
           setEstaAutenticado(false);
           setUsuario(null);
           setPerfil(null);
-          localStorage.removeItem(PERFIL_STORAGE_KEY);
+          authStorage.clearProfile();
           return;
         }
 
         if (tokenExpirado(token)) {
           try {
             const tokens = await authService.refreshToken(refreshToken);
-            localStorage.setItem('token', tokens.token);
-            localStorage.setItem('refreshToken', tokens.refreshToken);
+            authStorage.setTokens(tokens.token, tokens.refreshToken);
             token = tokens.token;
           } catch {
             authService.logout();
             setUsuario(null);
             setPerfil(null);
             setEstaAutenticado(false);
-            localStorage.removeItem(PERFIL_STORAGE_KEY);
+            authStorage.clearProfile();
             return;
           }
         }
@@ -146,7 +157,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUsuario(null);
           setPerfil(null);
           setEstaAutenticado(false);
-          localStorage.removeItem(PERFIL_STORAGE_KEY);
+          authStorage.clearProfile();
           return;
         }
 
@@ -154,8 +165,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setEstaAutenticado(true);
 
         const perfilCache = carregarPerfilLocal();
-        if (perfilCache) {
+        if (perfilCache?.username === user.username) {
           setPerfil(perfilCache);
+        } else {
+          authStorage.clearProfile();
         }
 
         void buscarPerfil(user.username);
@@ -171,16 +184,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     void checkAuth();
   }, [buscarPerfil]);
 
-  const login = async (username: string, senha: string) => {
+  const login = async (username: string, senha: string): Promise<Usuario | null> => {
     setCarregando(true);
     setError(null);
 
     try {
       const tokens = await authService.login({ username, senha });
-
-      localStorage.setItem('token', tokens.token);
-      localStorage.setItem('refreshToken', tokens.refreshToken);
-
+      authStorage.setTokens(tokens.token, tokens.refreshToken);
       const user = getUsuarioFromToken(tokens.token);
 
       if (!user) {
@@ -191,8 +201,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setEstaAutenticado(true);
       void buscarPerfil(user.username);
       return user;
-    } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Erro ao fazer login';
+    } catch (err) {
+      const msg = getErrorMessage(err, 'Erro ao fazer login');
       setError(msg);
       setEstaAutenticado(false);
       return null;
@@ -201,7 +211,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const cadastro = async (formData: Omit<CadastroParams, 'planoDTO'>) => {
+  const cadastro = async (formData: Omit<CadastroParams, 'planoDTO'>): Promise<void> => {
     setCarregando(true);
     setError(null);
 
@@ -212,8 +222,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           id: '',
         },
       });
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao cadastrar');
+    } catch (err) {
+      const errorMessage = getErrorMessage(err, 'Erro ao cadastrar');
+      setError(errorMessage);
       throw err;
     } finally {
       setCarregando(false);
@@ -237,8 +248,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       return await login(username, senha);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao cadastrar');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Erro ao cadastrar'));
       setEstaAutenticado(false);
       return null;
     } finally {
@@ -246,13 +257,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = (): void => {
     authService.logout();
     cacheService.clearAll();
     setUsuario(null);
     setPerfil(null);
     setEstaAutenticado(false);
-    localStorage.removeItem(PERFIL_STORAGE_KEY);
     authService.redirectToLogin();
   };
 

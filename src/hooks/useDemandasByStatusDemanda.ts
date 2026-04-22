@@ -12,6 +12,14 @@ type PaginacaoResponseDemandaStatus = {
   number: number;
 };
 
+type DemandasPorStatusParams = {
+  page: number;
+  size: number;
+  statusDemanda?: StatusDemandaTipo;
+  funcionarioID?: string;
+  clienteID?: string;
+};
+
 // A assinatura do hook permanece a mesma
 export const useDemandsByStatus = (status: StatusDemandaTipo, filtro: string, tipoFiltro: 'funcionario' | 'cliente') => {
   const perfil = usePerfil();
@@ -33,7 +41,7 @@ export const useDemandsByStatus = (status: StatusDemandaTipo, filtro: string, ti
 
     let response: AxiosResponse<PaginacaoResponseDemandaStatus>;
     let endpoint = '';
-    const params: any = {
+    const params: DemandasPorStatusParams = {
       statusDemanda: status,
       page: pagina,
       size: itensPorPagina,

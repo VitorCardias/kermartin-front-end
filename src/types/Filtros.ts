@@ -1,7 +1,7 @@
 // Tipos base para todos os filtros
 export interface FiltroBase {
   busca?: string;
-  [key: string]: any;
+  [key: string]: string | boolean | string[] | number | null | undefined;
 }
 
 // Filtros específicos por entidade

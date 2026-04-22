@@ -9,7 +9,7 @@ type CacheEntry<T> = {
   ttl: number; // Time to live em ms
 };
 
-const cache = new Map<string, CacheEntry<any>>();
+const cache = new Map<string, CacheEntry<unknown>>();
 
 export const cacheService = {
   /**
