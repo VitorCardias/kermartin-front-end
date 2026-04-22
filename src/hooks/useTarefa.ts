@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { authApi } from "../api/AuthService";
 import { usePerfil } from "./usePerfil";
+import { cacheService } from "../utils/cacheService";
 
 export type TarefaAPI = {
   id: string;
@@ -43,6 +44,12 @@ export const useTarefa = () => {
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const itensPorPagina = 10;
+
+  const invalidarCacheTarefas = () => {
+    const escritorioId = perfil?.idEscritorio || "sem-escritorio";
+    cacheService.clear(`tarefas:listagem:itens:${escritorioId}`);
+    cacheService.clear(`demandas:listagem:${escritorioId}`);
+  };
 
   // Função auxiliar para formatar data para exibição
   const formatarDataExibicao = (dataString: string | null | undefined): string => {
@@ -104,6 +111,7 @@ export const useTarefa = () => {
         criador: { id: perfil?.id },
         porcentagemConclusao: 0,
       });
+      invalidarCacheTarefas();
     } catch (error) {
       console.error("Erro ao cadastrar tarefa:", error);
       throw error;
@@ -120,6 +128,7 @@ export const useTarefa = () => {
         id: idTarefa,
         ...tarefaEditada,
       });
+      invalidarCacheTarefas();
     } catch (error) {
       console.error("Erro ao editar tarefa:", error);
       throw error;
@@ -130,6 +139,7 @@ export const useTarefa = () => {
   const deletarTarefa = async (idTarefa: string): Promise<void> => {
     try {
       await authApi.delete(`/tarefa-etapa/${idTarefa}`);
+      invalidarCacheTarefas();
     } catch (error) {
       console.error("Erro ao deletar tarefa:", error);
       throw error;
@@ -142,6 +152,7 @@ export const useTarefa = () => {
       await authApi.patch(
         `/membro-equipe-tarefa/concluir-tarefa?idAtribuicao=${idAtribuicaoTarefa}`
       );
+      invalidarCacheTarefas();
     } catch (error) {
       console.error("Erro ao concluir tarefa:", error);
       throw error;

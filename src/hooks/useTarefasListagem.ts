@@ -2,6 +2,8 @@ import { useCallback, useState } from "react";
 import { authApi } from "../api/AuthService";
 import { useListaPaginada, type FiltrosListagem, type ResultadoBusca } from "./useListagem";
 import { type TarefaAPI } from "./useTarefa";
+import { cacheService } from "../utils/cacheService";
+import { usePerfil } from "./usePerfil";
 
 type DemandaBasica = {
   id: string;
@@ -86,7 +88,10 @@ const extrairLista = <T,>(payload: any): T[] => {
 };
 
 export const useTarefasListagem = () => {
+  const perfil = usePerfil();
   const [demandasParaFiltro, setDemandasParaFiltro] = useState<Array<{ id: string; titulo: string }>>([]);
+  const cacheKeyDemandas = `tarefas:listagem:demandas:${perfil?.idEscritorio || "sem-escritorio"}`;
+  const cacheKeyTarefas = `tarefas:listagem:itens:${perfil?.idEscritorio || "sem-escritorio"}`;
 
   const buscarTarefasFn = useCallback(
     async (
@@ -97,8 +102,14 @@ export const useTarefasListagem = () => {
       try {
         const filtrosTarefa = filtros as FiltrosTarefaAvancados;
 
-        const demandasResponse = await authApi.get("/demanda");
-        const todasDemandas = extrairLista<DemandaBasica>(demandasResponse.data);
+        const todasDemandas = await cacheService.fetch<DemandaBasica[]>(
+          cacheKeyDemandas,
+          async () => {
+            const demandasResponse = await authApi.get("/demanda");
+            return extrairLista<DemandaBasica>(demandasResponse.data);
+          },
+          30 * 1000
+        );
 
         setDemandasParaFiltro(
           todasDemandas.map((demanda) => ({
@@ -109,56 +120,64 @@ export const useTarefasListagem = () => {
 
         const mapaDemandas = new Map(todasDemandas.map((d) => [d.id, d]));
 
-        let tarefasBrutas: TarefaAPI[] = [];
+        const tarefasBrutas = await cacheService.fetch<TarefaAPI[]>(
+          cacheKeyTarefas,
+          async () => {
+            let tarefasColetadas: TarefaAPI[] = [];
 
-        try {
-          const tarefasResponse = await authApi.get("/tarefa-etapa", {
-            params: { page: 0, size: 200 },
-          });
+            try {
+              const tarefasResponse = await authApi.get("/tarefa-etapa", {
+                params: { page: 0, size: 200 },
+              });
 
-          if (Array.isArray(tarefasResponse.data)) {
-            tarefasBrutas = tarefasResponse.data as TarefaAPI[];
-          } else if (tarefasResponse.data?.content && Array.isArray(tarefasResponse.data.content)) {
-            const primeiraPagina = tarefasResponse.data.content as TarefaAPI[];
-            const totalPages = Number(tarefasResponse.data.totalPages || 1);
+              if (Array.isArray(tarefasResponse.data)) {
+                tarefasColetadas = tarefasResponse.data as TarefaAPI[];
+              } else if (tarefasResponse.data?.content && Array.isArray(tarefasResponse.data.content)) {
+                const primeiraPagina = tarefasResponse.data.content as TarefaAPI[];
+                const totalPages = Number(tarefasResponse.data.totalPages || 1);
 
-            if (totalPages > 1) {
-              const paginasRestantes = await Promise.all(
-                Array.from({ length: totalPages - 1 }, (_, index) =>
-                  authApi.get("/tarefa-etapa", {
-                    params: { page: index + 1, size: 200 },
-                  })
-                )
-              );
+                if (totalPages > 1) {
+                  const paginasRestantes = await Promise.all(
+                    Array.from({ length: totalPages - 1 }, (_, index) =>
+                      authApi.get("/tarefa-etapa", {
+                        params: { page: index + 1, size: 200 },
+                      })
+                    )
+                  );
 
-              const outrasTarefas = paginasRestantes.flatMap((response) =>
-                extrairLista<TarefaAPI>(response.data)
-              );
+                  const outrasTarefas = paginasRestantes.flatMap((response) =>
+                    extrairLista<TarefaAPI>(response.data)
+                  );
 
-              tarefasBrutas = [...primeiraPagina, ...outrasTarefas];
-            } else {
-              tarefasBrutas = primeiraPagina;
-            }
-          }
-        } catch {
-          const respostasPorDemanda = await Promise.all(
-            todasDemandas.map(async (demanda) => {
-              try {
-                const response = await authApi.get(`/tarefa-etapa/demanda/${demanda.id}`, {
-                  params: { page: 0, size: 1000 },
-                });
-                return extrairLista<TarefaAPI>(response.data);
-              } catch {
-                return [];
+                  tarefasColetadas = [...primeiraPagina, ...outrasTarefas];
+                } else {
+                  tarefasColetadas = primeiraPagina;
+                }
               }
-            })
-          );
+            } catch {
+              const respostasPorDemanda = await Promise.all(
+                todasDemandas.map(async (demanda) => {
+                  try {
+                    const response = await authApi.get(`/tarefa-etapa/demanda/${demanda.id}`, {
+                      params: { page: 0, size: 1000 },
+                    });
+                    return extrairLista<TarefaAPI>(response.data);
+                  } catch {
+                    return [];
+                  }
+                })
+              );
 
-          const tarefasFlatten = respostasPorDemanda.flat();
-          const mapaPorId = new Map<string, TarefaAPI>();
-          tarefasFlatten.forEach((tarefa) => mapaPorId.set(tarefa.id, tarefa));
-          tarefasBrutas = Array.from(mapaPorId.values());
-        }
+              const tarefasFlatten = respostasPorDemanda.flat();
+              const mapaPorId = new Map<string, TarefaAPI>();
+              tarefasFlatten.forEach((tarefa) => mapaPorId.set(tarefa.id, tarefa));
+              tarefasColetadas = Array.from(mapaPorId.values());
+            }
+
+            return tarefasColetadas;
+          },
+          30 * 1000
+        );
 
         let tarefasFiltradas: TarefaListagem[] = tarefasBrutas.map((tarefa) => {
           const demanda = tarefa.demandaDTO?.id ? mapaDemandas.get(tarefa.demandaDTO.id) : undefined;
@@ -281,7 +300,7 @@ export const useTarefasListagem = () => {
         return { content: [], totalPages: 0, number: 0 };
       }
     },
-    []
+    [cacheKeyDemandas, cacheKeyTarefas]
   );
 
   const {

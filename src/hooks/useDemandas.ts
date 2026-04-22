@@ -3,6 +3,7 @@ import { authApi } from "../api/AuthService";
 import { usePerfil } from "./usePerfil";
 import { useListaPaginada, type ResultadoBusca, type FiltrosListagem } from "./useListagem";
 import { converterDataTimeLocalParaISO } from "../types/TiposDemandas";
+import { cacheService } from "../utils/cacheService";
 
 export type DemandaAPI = {
   id: string;
@@ -80,20 +81,34 @@ const parseDataDemanda = (valor?: string | null): Date | null => {
 
 export const useDemandas = () => {
   const perfil = usePerfil();
+  const cacheKeyDemandas = `demandas:listagem:${perfil?.idEscritorio || "sem-escritorio"}`;
+
+  const invalidarCacheDemandas = useCallback(() => {
+    cacheService.clear(cacheKeyDemandas);
+  }, [cacheKeyDemandas]);
+
   const buscarDemandasFn = useCallback(
     async (pagina: number, filtros: FiltrosListagem, limite: number): Promise<ResultadoBusca<Demanda>> => {
       try {
         const filtrosDemanda = filtros as FiltrosDemandaAvancados;
 
-        const response = await authApi.get(`/demanda`);
+        const todasAsDemandas = await cacheService.fetch<DemandaAPI[]>(
+          cacheKeyDemandas,
+          async () => {
+            const response = await authApi.get(`/demanda`);
 
-        let todasAsDemandas: DemandaAPI[] = [];
+            if (Array.isArray(response.data)) {
+              return response.data;
+            }
 
-        if (Array.isArray(response.data)) {
-          todasAsDemandas = response.data;
-        } else if (response.data?.content && Array.isArray(response.data.content)) {
-          todasAsDemandas = response.data.content;
-        }
+            if (response.data?.content && Array.isArray(response.data.content)) {
+              return response.data.content;
+            }
+
+            return [];
+          },
+          30 * 1000
+        );
 
         let demandasFiltradas = todasAsDemandas;
 
@@ -214,7 +229,7 @@ export const useDemandas = () => {
         return { content: [], totalPages: 0, number: 0 };
       }
     },
-    []
+    [cacheKeyDemandas]
   );
 
   const {
@@ -270,6 +285,7 @@ export const useDemandas = () => {
       const response = await authApi.post<DemandaAPI>("/demanda", payload);
 
       if (response.data?.id) {
+        invalidarCacheDemandas();
         recarregar();
         return { ...response.data, escritorioId: response.data.criador.id };
       }
@@ -305,6 +321,7 @@ export const useDemandas = () => {
       const response = await authApi.put<DemandaAPI>("/demanda", demandaEditadaPayload);
 
       if (response.data?.id) {
+        invalidarCacheDemandas();
         recarregar();
         return { ...response.data, escritorioId: response.data.criador.id };
       }
@@ -331,6 +348,7 @@ export const useDemandas = () => {
         typeof demandaParaDeletar === "string" ? demandaParaDeletar : demandaParaDeletar.id;
 
       await authApi.delete(`/demanda/${demandaId}`);
+      invalidarCacheDemandas();
       recarregar();
       return true;
     } catch (error) {

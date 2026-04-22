@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { usePerfil } from "./usePerfil";
 import { authApi } from "../api/AuthService";
+import { cacheService } from "../utils/cacheService";
 
 export type ClienteParaFiltro = {
   id: string;
@@ -12,6 +13,7 @@ export const useClientesParaFiltro = () => {
   const perfil = usePerfil();
   const [clientesParaFiltro, setClientesParaFiltro] = useState<ClienteParaFiltro[]>([]);
   const [loading, setLoading] = useState(true);
+  const cacheKey = `clientes:para-filtro:${perfil?.idEscritorio || "sem-escritorio"}`;
 
   // Função para buscar funcionários para filtragem
   const buscarClientesParaFiltro = async () => {
@@ -23,11 +25,18 @@ export const useClientesParaFiltro = () => {
 
       setLoading(true);
 
-      const response = await authApi.get(`/cliente/listar-para-filtro`, {
-        params: { escritorioID: perfil.idEscritorio },
-      });
+      const clientes = await cacheService.fetch<ClienteParaFiltro[]>(
+        cacheKey,
+        async () => {
+          const response = await authApi.get(`/cliente/listar-para-filtro`, {
+            params: { escritorioID: perfil.idEscritorio },
+          });
+          return response.data;
+        },
+        60 * 1000
+      );
 
-      setClientesParaFiltro(response.data);
+      setClientesParaFiltro(clientes);
       setLoading(false);
     } catch (error) {
       console.error("Erro ao buscar clientes para filtro: ", error);
@@ -39,7 +48,7 @@ export const useClientesParaFiltro = () => {
     if (perfil?.id) {
       buscarClientesParaFiltro();
     }
-  }, [perfil]);
+  }, [perfil, cacheKey]);
 
   return {
     loading,
